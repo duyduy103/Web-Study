@@ -127,6 +127,7 @@ export type Database = {
           difficulty: string | null;
           confidence: number | null;
           status: QuestionStatus;
+          warnings: string[];
           created_at: string;
         };
         Insert: {
@@ -140,6 +141,7 @@ export type Database = {
           difficulty?: string | null;
           confidence?: number | null;
           status?: QuestionStatus;
+          warnings?: string[];
           created_at?: string;
         };
         Update: {
@@ -153,6 +155,7 @@ export type Database = {
           difficulty?: string | null;
           confidence?: number | null;
           status?: QuestionStatus;
+          warnings?: string[];
           created_at?: string;
         };
         Relationships: [

@@ -1,44 +1,16 @@
-"use client";
-
-import * as React from "react";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { vi } from "@/lib/i18n/vi";
 
 export function CreateSetButton() {
-  const [showNotice, setShowNotice] = React.useState(false);
-
   return (
-    <div className="flex flex-col items-stretch gap-2 sm:items-end">
-      <Button
-        type="button"
-        size="lg"
-        onClick={() => setShowNotice(true)}
-        className="w-full sm:w-auto"
-      >
-        <span aria-hidden="true" className="text-lg leading-none">
-          +
-        </span>
-        <span>{vi.dashboard.createSetButton}</span>
-      </Button>
-
-      {showNotice ? (
-        <div
-          role="status"
-          aria-live="polite"
-          className="flex items-center justify-between gap-3 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2.5 text-sm text-teal-900 shadow-2xs"
-        >
-          <span>{vi.dashboard.comingSoonToast}</span>
-          <button
-            type="button"
-            onClick={() => setShowNotice(false)}
-            aria-label={vi.common.closeNotification}
-            className="inline-flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-lg text-teal-700 hover:bg-teal-100"
-          >
-            ✕
-          </button>
-        </div>
-      ) : null}
-    </div>
+    <Link
+      href="/dashboard/sets/new"
+      className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-teal-600 px-6 py-3 text-base font-medium text-white shadow-xs transition-colors hover:bg-teal-700 focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 focus-visible:outline-none sm:w-auto"
+    >
+      <span aria-hidden="true" className="text-lg leading-none">
+        +
+      </span>
+      <span>{vi.dashboard.createSetButton}</span>
+    </Link>
   );
 }
-

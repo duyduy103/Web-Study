@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { logoutAction } from "@/lib/auth/actions";
@@ -46,6 +47,33 @@ export default async function DashboardPage() {
     .order("created_at", { ascending: false });
 
   const sets = questionSets ?? [];
+  const setIds = sets.map((s) => s.id);
+
+  const statsBySetId = new Map<
+    string,
+    { total: number; needsReview: number }
+  >();
+
+  if (setIds.length > 0) {
+    const { data: questionsMeta } = await supabase
+      .from("questions")
+      .select("set_id, confidence, warnings")
+      .in("set_id", setIds);
+
+    for (const q of questionsMeta ?? []) {
+      const current = statsBySetId.get(q.set_id) ?? {
+        total: 0,
+        needsReview: 0,
+      };
+      current.total += 1;
+      const conf = q.confidence ?? 0;
+      const hasWarnings = Array.isArray(q.warnings) && q.warnings.length > 0;
+      if (conf < 0.8 || hasWarnings) {
+        current.needsReview += 1;
+      }
+      statsBySetId.set(q.set_id, current);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -128,27 +156,62 @@ export default async function DashboardPage() {
             </Card>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {sets.map((setItem) => (
-                <Card
-                  key={setItem.id}
-                  className="transition-shadow hover:shadow-md"
-                >
-                  <CardHeader className="pb-3">
-                    <CardTitle className="line-clamp-2 text-base">
-                      {setItem.title}
-                    </CardTitle>
-                    <CardDescription>
-                      {setItem.subject ?? vi.dashboard.setCard.subjectFallback}{" "}
-                      • {vi.dashboard.setCard.gradePrefix}{" "}
-                      {setItem.grade ?? vi.dashboard.setCard.gradeFallback}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="text-xs text-slate-500">
-                    {vi.dashboard.setCard.createdAtPrefix}{" "}
-                    {new Date(setItem.created_at).toLocaleDateString("vi-VN")}
-                  </CardContent>
-                </Card>
-              ))}
+              {sets.map((setItem) => {
+                const stat = statsBySetId.get(setItem.id) ?? {
+                  total: 0,
+                  needsReview: 0,
+                };
+                return (
+                  <Link
+                    key={setItem.id}
+                    href={`/dashboard/sets/${setItem.id}`}
+                    className="block rounded-2xl focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-none"
+                  >
+                    <Card className="h-full transition-shadow hover:border-teal-300 hover:shadow-md">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="line-clamp-2 text-base">
+                          {setItem.title}
+                        </CardTitle>
+                        <CardDescription>
+                          {setItem.subject ??
+                            vi.dashboard.setCard.subjectFallback}{" "}
+                          • {vi.dashboard.setCard.gradePrefix}{" "}
+                          {setItem.grade ?? vi.dashboard.setCard.gradeFallback}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                          <span className="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-800">
+                            {stat.total}{" "}
+                            {vi.dashboard.setCard.questionCountSuffix}
+                          </span>
+                          {stat.needsReview > 0 ? (
+                            <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-medium text-amber-800">
+                              {stat.needsReview}{" "}
+                              {vi.dashboard.setCard.needsReviewSuffix}
+                            </span>
+                          ) : (
+                            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 font-medium text-emerald-800">
+                              {vi.dashboard.setCard.allGoodBadge}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-slate-500">
+                          <span>
+                            {vi.dashboard.setCard.createdAtPrefix}{" "}
+                            {new Date(setItem.created_at).toLocaleDateString(
+                              "vi-VN"
+                            )}
+                          </span>
+                          <span className="font-medium text-teal-700">
+                            {vi.dashboard.setCard.viewDetails} →
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                );
+              })}
             </div>
           )}
         </section>
@@ -156,4 +219,3 @@ export default async function DashboardPage() {
     </div>
   );
 }
-
