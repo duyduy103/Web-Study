@@ -1,0 +1,209 @@
+"use client";
+
+import * as React from "react";
+import Link from "next/link";
+import { loginAction, signupAction, type AuthActionState } from "@/lib/auth/actions";
+import { loginSchema, signupSchema } from "@/lib/auth/schemas";
+import { vi } from "@/lib/i18n/vi";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+interface AuthFormProps {
+  mode: "login" | "signup";
+}
+
+const initialState: AuthActionState = {};
+
+export function AuthForm({ mode }: AuthFormProps) {
+  const isLogin = mode === "login";
+  const serverAction = isLogin ? loginAction : signupAction;
+
+  const [state, formAction, isPending] = React.useActionState(
+    serverAction,
+    initialState
+  );
+  const [clientErrors, setClientErrors] = React.useState<
+    AuthActionState["fieldErrors"]
+  >({});
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    const formData = new FormData(event.currentTarget);
+    const rawData: unknown = {
+      displayName: formData.get("displayName") ?? "",
+      email: formData.get("email") ?? "",
+      password: formData.get("password") ?? "",
+    };
+
+    const schema = isLogin ? loginSchema : signupSchema;
+    const parsed = schema.safeParse(rawData);
+
+    if (!parsed.success) {
+      event.preventDefault();
+      const flattened = parsed.error.flatten().fieldErrors as Record<
+        string,
+        string[] | undefined
+      >;
+      setClientErrors({
+        displayName: flattened.displayName?.[0],
+        email: flattened.email?.[0],
+        password: flattened.password?.[0],
+      });
+      return;
+    }
+
+    setClientErrors({});
+  }
+
+  const displayNameError =
+    clientErrors?.displayName ?? state.fieldErrors?.displayName;
+  const emailError = clientErrors?.email ?? state.fieldErrors?.email;
+  const passwordError = clientErrors?.password ?? state.fieldErrors?.password;
+
+  return (
+    <Card className="w-full max-w-md border-slate-200/90 shadow-sm">
+      <CardHeader className="space-y-2 text-center">
+        <div className="mx-auto inline-flex items-center gap-2 rounded-full bg-teal-50 px-3.5 py-1 text-xs font-semibold text-teal-800">
+          <span>{vi.app.name}</span>
+          <span>•</span>
+          <span>{vi.app.roleBadge}</span>
+        </div>
+        <CardTitle className="text-2xl font-bold text-slate-900">
+          {isLogin ? vi.auth.loginTitle : vi.auth.signupTitle}
+        </CardTitle>
+        <CardDescription className="text-sm text-slate-600">
+          {isLogin ? vi.auth.loginSubtitle : vi.auth.signupSubtitle}
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent>
+        <form
+          action={formAction}
+          onSubmit={handleSubmit}
+          noValidate
+          className="space-y-4"
+        >
+          {state.error ? (
+            <div
+              role="alert"
+              className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+            >
+              {state.error}
+            </div>
+          ) : null}
+
+          {state.successMessage ? (
+            <div
+              role="status"
+              className="rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-900"
+            >
+              {state.successMessage}
+            </div>
+          ) : null}
+
+          {!isLogin ? (
+            <div className="space-y-2">
+              <Label htmlFor="displayName">{vi.auth.displayNameLabel}</Label>
+              <Input
+                id="displayName"
+                name="displayName"
+                type="text"
+                autoComplete="name"
+                placeholder={vi.auth.displayNamePlaceholder}
+                aria-invalid={Boolean(displayNameError)}
+                aria-describedby={
+                  displayNameError ? "displayName-error" : undefined
+                }
+              />
+              {displayNameError ? (
+                <p
+                  id="displayName-error"
+                  className="text-xs font-medium text-red-600"
+                >
+                  {displayNameError}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div className="space-y-2">
+            <Label htmlFor="email">{vi.auth.emailLabel}</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              required
+              placeholder={vi.auth.emailPlaceholder}
+              aria-invalid={Boolean(emailError)}
+              aria-describedby={emailError ? "email-error" : undefined}
+            />
+            {emailError ? (
+              <p id="email-error" className="text-xs font-medium text-red-600">
+                {emailError}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="password">{vi.auth.passwordLabel}</Label>
+            <Input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete={isLogin ? "current-password" : "new-password"}
+              required
+              placeholder={vi.auth.passwordPlaceholder}
+              aria-invalid={Boolean(passwordError)}
+              aria-describedby={passwordError ? "password-error" : undefined}
+            />
+            {passwordError ? (
+              <p
+                id="password-error"
+                className="text-xs font-medium text-red-600"
+              >
+                {passwordError}
+              </p>
+            ) : null}
+          </div>
+
+          <Button
+            type="submit"
+            size="lg"
+            disabled={isPending}
+            className="w-full"
+          >
+            {isPending
+              ? isLogin
+                ? vi.auth.loginSubmitting
+                : vi.auth.signupSubmitting
+              : isLogin
+                ? vi.auth.loginButton
+                : vi.auth.signupButton}
+          </Button>
+        </form>
+      </CardContent>
+
+      <CardFooter className="justify-center border-t border-slate-100 pt-4 text-sm text-slate-600">
+        <span>
+          {isLogin ? vi.auth.noAccountPrompt : vi.auth.hasAccountPrompt}
+        </span>
+        <Link
+          href={isLogin ? "/signup" : "/login"}
+          className="ml-1.5 inline-flex min-h-[44px] items-center font-semibold text-teal-700 underline-offset-4 hover:underline"
+        >
+          {isLogin ? vi.auth.noAccountLink : vi.auth.hasAccountLink}
+        </Link>
+      </CardFooter>
+    </Card>
+  );
+}
+
