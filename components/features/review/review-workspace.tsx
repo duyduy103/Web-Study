@@ -45,6 +45,8 @@ import {
   DistractorGeneratorPanel,
   type ShortAnswerQuestionCandidate,
 } from "@/components/features/sets/distractor-generator-panel";
+import { CreateExamModal } from "@/components/features/exams/create-exam-modal";
+import { TeacherStudyPanel } from "@/components/features/study/teacher-study-panel";
 
 const PAGE_SIZE = 25;
 
@@ -56,6 +58,8 @@ interface ReviewWorkspaceProps {
   createdAt: string;
   initialQuestions: ReviewQuestionItem[];
   initialRemainingAiQuota: number;
+  initialStudyEnabled?: boolean;
+  initialStudyCode?: string | null;
 }
 
 export function ReviewWorkspace({
@@ -66,8 +70,13 @@ export function ReviewWorkspace({
   createdAt,
   initialQuestions,
   initialRemainingAiQuota,
+  initialStudyEnabled = false,
+  initialStudyCode = null,
 }: ReviewWorkspaceProps) {
   const storageKey = `memoquiz_review_undo_${setId}`;
+  const [activeTab, setActiveTab] = React.useState<"questions" | "study_stats">(
+    "questions"
+  );
 
   const [questions, setQuestions] =
     React.useState<ReviewQuestionItem[]>(initialQuestions);
@@ -97,6 +106,7 @@ export function ReviewWorkspace({
   const [greenModalOpen, setGreenModalOpen] = React.useState(false);
   const [manualBulkModalOpen, setManualBulkModalOpen] = React.useState(false);
   const [shortcutsModalOpen, setShortcutsModalOpen] = React.useState(false);
+  const [createExamModalOpen, setCreateExamModalOpen] = React.useState(false);
 
   // Đồng bộ khi initialQuestions thay đổi (ví dụ sau khi chạy AI sinh đáp án nhiễu)
   React.useEffect(() => {
@@ -800,13 +810,24 @@ export function ReviewWorkspace({
         grade={grade}
         createdAt={createdAt}
         stats={stats}
+        onOpenCreateExam={() => setCreateExamModalOpen(true)}
       />
 
-      <DistractorGeneratorPanel
+      <TeacherStudyPanel
         setId={setId}
-        candidates={shortAnswerCandidates}
-        initialRemainingQuota={initialRemainingAiQuota}
+        initialStudyEnabled={initialStudyEnabled}
+        initialStudyCode={initialStudyCode}
+        activeTab={activeTab}
+        onChangeTab={setActiveTab}
       />
+
+      {activeTab === "questions" ? (
+        <>
+          <DistractorGeneratorPanel
+            setId={setId}
+            candidates={shortAnswerCandidates}
+            initialRemainingQuota={initialRemainingAiQuota}
+          />
 
       <ReviewFilterBar
         filter={filter}
@@ -982,6 +1003,8 @@ export function ReviewWorkspace({
           ) : null}
         </div>
       )}
+        </>
+      ) : null}
 
       {toastMessage ? (
         <div
@@ -1032,6 +1055,14 @@ export function ReviewWorkspace({
       <KeyboardShortcutsModal
         open={shortcutsModalOpen}
         onClose={() => setShortcutsModalOpen(false)}
+      />
+
+      <CreateExamModal
+        open={createExamModalOpen}
+        setId={setId}
+        setTitle={title}
+        questions={questions}
+        onClose={() => setCreateExamModalOpen(false)}
       />
     </div>
   );

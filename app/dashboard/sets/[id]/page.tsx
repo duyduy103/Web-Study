@@ -30,15 +30,22 @@ export default async function QuestionSetDetailPage({
     redirect("/login");
   }
 
-  const [{ data: questionSet }, quotaStatus] = await Promise.all([
-    supabase
-      .from("question_sets")
-      .select("id, title, subject, grade, created_at")
-      .eq("id", id)
-      .eq("owner_id", user.id)
-      .maybeSingle(),
-    getUserAiQuotaStatus(supabase, user.id),
-  ]);
+  const [{ data: questionSet }, quotaStatus, { data: setExams }] =
+    await Promise.all([
+      supabase
+        .from("question_sets")
+        .select("id, title, subject, grade, study_enabled, study_code, created_at")
+        .eq("id", id)
+        .eq("owner_id", user.id)
+        .maybeSingle(),
+      getUserAiQuotaStatus(supabase, user.id),
+      supabase
+        .from("exams")
+        .select("id, title, code, is_open, created_at")
+        .eq("set_id", id)
+        .eq("owner_id", user.id)
+        .order("created_at", { ascending: false }),
+    ]);
 
   if (!questionSet) {
     return (
@@ -173,7 +180,42 @@ export default async function QuestionSetDetailPage({
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="mx-auto max-w-5xl space-y-5 px-4 py-6 sm:px-6 sm:py-8">
+        {setExams && setExams.length > 0 ? (
+          <section className="rounded-2xl border border-teal-200 bg-teal-50/60 p-4">
+            <h2 className="text-xs font-bold tracking-wide text-teal-900 uppercase">
+              {vi.exams.setExamsBannerTitle} ({setExams.length})
+            </h2>
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              {setExams.map((ex) => (
+                <Link
+                  key={ex.id}
+                  href={`/dashboard/exams/${ex.id}`}
+                  className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-teal-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-800 shadow-2xs hover:border-teal-600 hover:text-teal-800"
+                >
+                  <span>{ex.title}</span>
+                  {ex.code ? (
+                    <span className="rounded-md bg-teal-100 px-1.5 py-0.5 font-mono text-teal-900">
+                      {ex.code}
+                    </span>
+                  ) : null}
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[11px] ${
+                      ex.is_open
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-slate-200 text-slate-700"
+                    }`}
+                  >
+                    {ex.is_open
+                      ? vi.dashboard.examCard.statusOpen
+                      : vi.dashboard.examCard.statusClosed}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         <ReviewWorkspace
           setId={questionSet.id}
           title={questionSet.title}
@@ -182,6 +224,8 @@ export default async function QuestionSetDetailPage({
           createdAt={questionSet.created_at}
           initialQuestions={initialQuestions}
           initialRemainingAiQuota={quotaStatus.remainingToday}
+          initialStudyEnabled={Boolean(questionSet.study_enabled)}
+          initialStudyCode={questionSet.study_code ?? null}
         />
       </main>
     </div>

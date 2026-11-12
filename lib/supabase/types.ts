@@ -14,6 +14,7 @@ export type Json =
 export type UserRole = "teacher" | "student";
 export type QuestionType = "mcq" | "true_false" | "cloze" | "short_answer";
 export type QuestionStatus = "draft" | "approved" | "archived";
+export type AttemptStatus = "in_progress" | "submitted" | "expired";
 
 export type Database = {
   public: {
@@ -47,6 +48,8 @@ export type Database = {
           subject: string | null;
           grade: string | null;
           source_file_hash: string | null;
+          study_enabled: boolean;
+          study_code: string | null;
           created_at: string;
         };
         Insert: {
@@ -56,6 +59,8 @@ export type Database = {
           subject?: string | null;
           grade?: string | null;
           source_file_hash?: string | null;
+          study_enabled?: boolean;
+          study_code?: string | null;
           created_at?: string;
         };
         Update: {
@@ -65,6 +70,8 @@ export type Database = {
           subject?: string | null;
           grade?: string | null;
           source_file_hash?: string | null;
+          study_enabled?: boolean;
+          study_code?: string | null;
           created_at?: string;
         };
         Relationships: [
@@ -259,9 +266,16 @@ export type Database = {
           owner_id: string;
           set_id: string | null;
           title: string;
+          code: string | null;
           duration_min: number | null;
           shuffle_questions: boolean;
           shuffle_choices: boolean;
+          is_open: boolean;
+          show_answers: boolean;
+          opens_at: string | null;
+          closes_at: string | null;
+          max_attempts: number;
+          total_points: number;
           created_at: string;
         };
         Insert: {
@@ -269,9 +283,16 @@ export type Database = {
           owner_id: string;
           set_id?: string | null;
           title: string;
+          code?: string | null;
           duration_min?: number | null;
           shuffle_questions?: boolean;
           shuffle_choices?: boolean;
+          is_open?: boolean;
+          show_answers?: boolean;
+          opens_at?: string | null;
+          closes_at?: string | null;
+          max_attempts?: number;
+          total_points?: number;
           created_at?: string;
         };
         Update: {
@@ -279,9 +300,16 @@ export type Database = {
           owner_id?: string;
           set_id?: string | null;
           title?: string;
+          code?: string | null;
           duration_min?: number | null;
           shuffle_questions?: boolean;
           shuffle_choices?: boolean;
+          is_open?: boolean;
+          show_answers?: boolean;
+          opens_at?: string | null;
+          closes_at?: string | null;
+          max_attempts?: number;
+          total_points?: number;
           created_at?: string;
         };
         Relationships: [
@@ -305,25 +333,28 @@ export type Database = {
         Row: {
           id: string;
           exam_id: string;
-          question_id: string;
+          question_id: string | null;
           points: number;
           position: number;
+          question_snapshot: Json;
           created_at: string;
         };
         Insert: {
           id?: string;
           exam_id: string;
-          question_id: string;
+          question_id?: string | null;
           points?: number;
           position?: number;
+          question_snapshot?: Json;
           created_at?: string;
         };
         Update: {
           id?: string;
           exam_id?: string;
-          question_id?: string;
+          question_id?: string | null;
           points?: number;
           position?: number;
+          question_snapshot?: Json;
           created_at?: string;
         };
         Relationships: [
@@ -384,9 +415,19 @@ export type Database = {
           exam_id: string | null;
           set_id: string | null;
           student_id: string | null;
+          learner_id: string | null;
+          student_name: string;
+          student_class: string | null;
+          attempt_token: string | null;
           started_at: string;
           submitted_at: string | null;
+          deadline_at: string | null;
+          status: AttemptStatus;
           score: number | null;
+          needs_manual_review: boolean;
+          question_order: string[];
+          choice_orders: Json;
+          flagged_questions: string[];
           created_at: string;
         };
         Insert: {
@@ -394,9 +435,19 @@ export type Database = {
           exam_id?: string | null;
           set_id?: string | null;
           student_id?: string | null;
+          learner_id?: string | null;
+          student_name?: string;
+          student_class?: string | null;
+          attempt_token?: string | null;
           started_at?: string;
           submitted_at?: string | null;
+          deadline_at?: string | null;
+          status?: AttemptStatus;
           score?: number | null;
+          needs_manual_review?: boolean;
+          question_order?: string[];
+          choice_orders?: Json;
+          flagged_questions?: string[];
           created_at?: string;
         };
         Update: {
@@ -404,9 +455,19 @@ export type Database = {
           exam_id?: string | null;
           set_id?: string | null;
           student_id?: string | null;
+          learner_id?: string | null;
+          student_name?: string;
+          student_class?: string | null;
+          attempt_token?: string | null;
           started_at?: string;
           submitted_at?: string | null;
+          deadline_at?: string | null;
+          status?: AttemptStatus;
           score?: number | null;
+          needs_manual_review?: boolean;
+          question_order?: string[];
+          choice_orders?: Json;
+          flagged_questions?: string[];
           created_at?: string;
         };
         Relationships: [
@@ -437,29 +498,41 @@ export type Database = {
         Row: {
           id: string;
           attempt_id: string;
-          question_id: string;
+          exam_question_id: string | null;
+          question_id: string | null;
           response: string | null;
           is_correct: boolean | null;
+          points_awarded: number | null;
+          needs_review: boolean;
           ai_feedback: string | null;
           created_at: string;
+          updated_at: string;
         };
         Insert: {
           id?: string;
           attempt_id: string;
-          question_id: string;
+          exam_question_id?: string | null;
+          question_id?: string | null;
           response?: string | null;
           is_correct?: boolean | null;
+          points_awarded?: number | null;
+          needs_review?: boolean;
           ai_feedback?: string | null;
           created_at?: string;
+          updated_at?: string;
         };
         Update: {
           id?: string;
           attempt_id?: string;
-          question_id?: string;
+          exam_question_id?: string | null;
+          question_id?: string | null;
           response?: string | null;
           is_correct?: boolean | null;
+          points_awarded?: number | null;
+          needs_review?: boolean;
           ai_feedback?: string | null;
           created_at?: string;
+          updated_at?: string;
         };
         Relationships: [
           {
@@ -548,6 +621,138 @@ export type Database = {
           }
         ];
       };
+      learners: {
+        Row: {
+          id: string;
+          nickname: string;
+          secret_hash: string;
+          recovery_code_hash: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          nickname: string;
+          secret_hash: string;
+          recovery_code_hash: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          nickname?: string;
+          secret_hash?: string;
+          recovery_code_hash?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      learner_set_enrollments: {
+        Row: {
+          learner_id: string;
+          set_id: string;
+          daily_new_limit: number;
+          leech_threshold: number;
+          joined_at: string;
+          last_studied_at: string;
+        };
+        Insert: {
+          learner_id: string;
+          set_id: string;
+          daily_new_limit?: number;
+          leech_threshold?: number;
+          joined_at?: string;
+          last_studied_at?: string;
+        };
+        Update: {
+          learner_id?: string;
+          set_id?: string;
+          daily_new_limit?: number;
+          leech_threshold?: number;
+          joined_at?: string;
+          last_studied_at?: string;
+        };
+        Relationships: [];
+      };
+      card_states: {
+        Row: {
+          learner_id: string;
+          question_id: string;
+          due: string;
+          stability: number;
+          difficulty: number;
+          elapsed_days: number;
+          scheduled_days: number;
+          learning_steps: number;
+          reps: number;
+          lapses: number;
+          state: number;
+          last_review: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          learner_id: string;
+          question_id: string;
+          due?: string;
+          stability?: number;
+          difficulty?: number;
+          elapsed_days?: number;
+          scheduled_days?: number;
+          learning_steps?: number;
+          reps?: number;
+          lapses?: number;
+          state?: number;
+          last_review?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          learner_id?: string;
+          question_id?: string;
+          due?: string;
+          stability?: number;
+          difficulty?: number;
+          elapsed_days?: number;
+          scheduled_days?: number;
+          learning_steps?: number;
+          reps?: number;
+          lapses?: number;
+          state?: number;
+          last_review?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      review_logs: {
+        Row: {
+          id: string;
+          learner_id: string;
+          question_id: string;
+          rating: number;
+          state_before: number;
+          elapsed_days: number;
+          scheduled_days: number;
+          reviewed_at: string;
+        };
+        Insert: {
+          id?: string;
+          learner_id: string;
+          question_id: string;
+          rating: number;
+          state_before?: number;
+          elapsed_days?: number;
+          scheduled_days?: number;
+          reviewed_at?: string;
+        };
+        Update: {
+          id?: string;
+          learner_id?: string;
+          question_id?: string;
+          rating?: number;
+          state_before?: number;
+          elapsed_days?: number;
+          scheduled_days?: number;
+          reviewed_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -586,6 +791,150 @@ export type Database = {
           p_snapshots: Json;
         };
         Returns: Json;
+      };
+      check_rate_limit: {
+        Args: {
+          p_key: string;
+          p_max_hits?: number;
+          p_window_seconds?: number;
+        };
+        Returns: boolean;
+      };
+      get_public_exam_by_code: {
+        Args: {
+          p_code: string;
+        };
+        Returns: Json;
+      };
+      start_public_exam_attempt: {
+        Args: {
+          p_code: string;
+          p_student_name: string;
+          p_student_class?: string | null;
+          p_attempt_token: string;
+          p_question_order: string[];
+          p_choice_orders: Json;
+        };
+        Returns: Json;
+      };
+      get_student_attempt_by_token: {
+        Args: {
+          p_attempt_token: string;
+        };
+        Returns: Json;
+      };
+      save_student_attempt_draft: {
+        Args: {
+          p_attempt_token: string;
+          p_responses?: Json;
+          p_flagged_questions?: string[] | null;
+        };
+        Returns: Json;
+      };
+      lock_attempt_for_server_grading: {
+        Args: {
+          p_attempt_token: string;
+          p_final_responses?: Json;
+          p_flagged_questions?: string[] | null;
+        };
+        Returns: Json;
+      };
+      save_server_grading_result: {
+        Args: {
+          p_attempt_token: string;
+          p_score: number;
+          p_needs_manual_review: boolean;
+          p_graded_answers: Json;
+        };
+        Returns: Json;
+      };
+      create_anonymous_learner: {
+        Args: {
+          p_nickname: string;
+          p_secret_hash: string;
+          p_recovery_code_hash: string;
+        };
+        Returns: Json;
+      };
+      recover_learner_by_code: {
+        Args: {
+          p_recovery_code_hash: string;
+          p_new_secret_hash: string;
+        };
+        Returns: Json;
+      };
+      get_public_study_set_by_code: {
+        Args: {
+          p_code: string;
+        };
+        Returns: Json;
+      };
+      get_learner_study_overview: {
+        Args: {
+          p_secret_hash: string;
+          p_code?: string | null;
+        };
+        Returns: Json;
+      };
+      update_learner_study_settings: {
+        Args: {
+          p_secret_hash: string;
+          p_set_id: string;
+          p_daily_new_limit: number;
+          p_leech_threshold?: number;
+        };
+        Returns: Json;
+      };
+      reveal_study_card_hint_or_answer: {
+        Args: {
+          p_secret_hash: string;
+          p_code: string;
+          p_question_id: string;
+          p_mode: string;
+        };
+        Returns: Json;
+      };
+      record_learner_card_review: {
+        Args: {
+          p_secret_hash: string;
+          p_code: string;
+          p_question_id: string;
+          p_rating: number;
+          p_state_before: number;
+          p_elapsed_days: number;
+          p_scheduled_days: number;
+          p_due: string;
+          p_stability: number;
+          p_difficulty: number;
+          p_learning_steps: number;
+          p_reps: number;
+          p_lapses: number;
+          p_next_state: number;
+          p_reviewed_at: string;
+        };
+        Returns: Json;
+      };
+      undo_learner_card_review: {
+        Args: {
+          p_secret_hash: string;
+          p_review_log_id: string;
+          p_question_id: string;
+          p_previous_card_state?: Json | null;
+        };
+        Returns: Json;
+      };
+      get_teacher_set_study_stats: {
+        Args: {
+          p_set_id: string;
+        };
+        Returns: Json;
+      };
+      link_attempt_to_learner: {
+        Args: {
+          p_attempt_token: string;
+          p_secret_hash: string;
+        };
+        Returns: undefined;
       };
     };
     Enums: {

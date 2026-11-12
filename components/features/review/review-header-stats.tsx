@@ -11,6 +11,7 @@ interface ReviewHeaderStatsProps {
   grade: string | null;
   createdAt: string;
   stats: ReviewSummaryStats;
+  onOpenCreateExam: () => void;
 }
 
 export function ReviewHeaderStats({
@@ -19,9 +20,8 @@ export function ReviewHeaderStats({
   grade,
   createdAt,
   stats,
+  onOpenCreateExam,
 }: ReviewHeaderStatsProps) {
-  const [showComingSoon, setShowComingSoon] = React.useState(false);
-
   const approvedCount = stats.byStatus.approved;
   const activeTotal = Math.max(1, stats.total - stats.byStatus.archived);
   const progressPercent =
@@ -51,25 +51,36 @@ export function ReviewHeaderStats({
           </p>
         </div>
 
-        <div className="w-full sm:w-72">
-          <div className="mb-1.5 flex items-center justify-between text-xs font-semibold">
-            <span className="text-teal-900">
-              {vi.review.progressApprovedPrefix} {approvedCount}/{activeTotal}{" "}
-              {vi.review.progressApprovedUnit}
-            </span>
-            <span className="text-teal-700">{progressPercent}%</span>
-          </div>
-          <div
-            role="progressbar"
-            aria-valuenow={progressPercent}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100"
+        <div className="flex flex-col items-stretch gap-2.5 sm:w-80 sm:items-end">
+          <Button
+            type="button"
+            size="sm"
+            onClick={onOpenCreateExam}
+            className="w-full sm:w-auto"
           >
+            {vi.review.createExamButton}
+          </Button>
+
+          <div className="w-full">
+            <div className="mb-1.5 flex items-center justify-between text-xs font-semibold">
+              <span className="text-teal-900">
+                {vi.review.progressApprovedPrefix} {approvedCount}/{activeTotal}{" "}
+                {vi.review.progressApprovedUnit}
+              </span>
+              <span className="text-teal-700">{progressPercent}%</span>
+            </div>
             <div
-              className="h-full rounded-full bg-teal-600 transition-all duration-300"
-              style={{ width: `${progressPercent}%` }}
-            />
+              role="progressbar"
+              aria-valuenow={progressPercent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100"
+            >
+              <div
+                className="h-full rounded-full bg-teal-600 transition-all duration-300"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -142,20 +153,15 @@ export function ReviewHeaderStats({
             <p className="text-xs text-emerald-900 sm:text-sm">
               {vi.review.allReviewedBannerDescription}
             </p>
-            {showComingSoon ? (
-              <p className="text-xs font-semibold text-teal-800">
-                {vi.dashboard.comingSoonBadge}: Tính năng Tạo đề kiểm tra & Xuất Word/PDF sẽ mở ở Bước 5!
-              </p>
-            ) : null}
           </div>
 
           <Button
             type="button"
             size="sm"
-            onClick={() => setShowComingSoon(true)}
+            onClick={onOpenCreateExam}
             className="shrink-0"
           >
-            {vi.review.createExamComingSoonButton}
+            {vi.review.createExamButton}
           </Button>
         </div>
       ) : null}
