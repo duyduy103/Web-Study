@@ -55,24 +55,30 @@ export default async function DashboardPage() {
 
   const statsBySetId = new Map<
     string,
-    { total: number; needsReview: number }
+    { total: number; approved: number; needsReview: number }
   >();
 
   if (setIds.length > 0) {
     const { data: questionsMeta } = await supabase
       .from("questions")
-      .select("set_id, confidence, warnings")
+      .select("set_id, status, confidence, warnings, ai_generated")
       .in("set_id", setIds);
 
     for (const q of questionsMeta ?? []) {
       const current = statsBySetId.get(q.set_id) ?? {
         total: 0,
+        approved: 0,
         needsReview: 0,
       };
-      current.total += 1;
+      if (q.status !== "archived") {
+        current.total += 1;
+      }
+      if (q.status === "approved") {
+        current.approved += 1;
+      }
       const conf = q.confidence ?? 0;
       const hasWarnings = Array.isArray(q.warnings) && q.warnings.length > 0;
-      if (conf < 0.8 || hasWarnings) {
+      if (q.status === "draft" && (conf < 0.8 || hasWarnings || q.ai_generated)) {
         current.needsReview += 1;
       }
       statsBySetId.set(q.set_id, current);
@@ -170,6 +176,7 @@ export default async function DashboardPage() {
               {sets.map((setItem) => {
                 const stat = statsBySetId.get(setItem.id) ?? {
                   total: 0,
+                  approved: 0,
                   needsReview: 0,
                 };
                 return (
@@ -192,8 +199,9 @@ export default async function DashboardPage() {
                       </CardHeader>
                       <CardContent className="space-y-3">
                         <div className="flex flex-wrap items-center gap-2 text-xs">
-                          <span className="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-800">
-                            {stat.total}{" "}
+                          <span className="rounded-full bg-teal-50 px-2.5 py-1 font-semibold text-teal-900">
+                            {vi.dashboard.setCard.approvedCountPrefix}{" "}
+                            {stat.approved}/{stat.total}{" "}
                             {vi.dashboard.setCard.questionCountSuffix}
                           </span>
                           {stat.needsReview > 0 ? (

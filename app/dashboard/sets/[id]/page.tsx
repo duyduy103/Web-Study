@@ -10,33 +10,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  DistractorGeneratorPanel,
-  type ShortAnswerQuestionCandidate,
-} from "@/components/features/sets/distractor-generator-panel";
+import { ReviewWorkspace } from "@/components/features/review/review-workspace";
+import type { ReviewQuestionItem } from "@/lib/review/types";
 
 interface SetDetailPageProps {
   params: Promise<{ id: string }>;
-}
-
-function getConfidenceBadge(confidence: number | null) {
-  const val = confidence ?? 0.5;
-  if (val >= 0.8) {
-    return {
-      label: vi.setDetails.confidenceBadges.high,
-      className: "border-emerald-200 bg-emerald-50 text-emerald-800",
-    };
-  }
-  if (val >= 0.5) {
-    return {
-      label: vi.setDetails.confidenceBadges.medium,
-      className: "border-amber-200 bg-amber-50 text-amber-800",
-    };
-  }
-  return {
-    label: vi.setDetails.confidenceBadges.low,
-    className: "border-red-200 bg-red-50 text-red-800",
-  };
 }
 
 export default async function QuestionSetDetailPage({
@@ -68,7 +46,9 @@ export default async function QuestionSetDetailPage({
         <Card className="w-full max-w-md p-6">
           <CardHeader>
             <CardTitle>{vi.setDetails.notFoundTitle}</CardTitle>
-            <CardDescription>{vi.setDetails.notFoundDescription}</CardDescription>
+            <CardDescription>
+              {vi.setDetails.notFoundDescription}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Link
@@ -83,16 +63,35 @@ export default async function QuestionSetDetailPage({
     );
   }
 
-  const { data: questionsData } = await supabase
+  const { data: fullQuestionsData, error: fullQueryError } = await supabase
     .from("questions")
     .select(
-      "id, type, stem, explanation, source_ref, confidence, status, warnings, ai_generated, created_at"
+      "id, set_id, type, stem, explanation, source_ref, raw_source_text, topic, difficulty, confidence, status, warnings, ai_generated, reviewed_by_human, reviewed_at, created_at, updated_at"
     )
     .eq("set_id", questionSet.id)
     .order("created_at", { ascending: true });
 
-  const questions = questionsData ?? [];
-  const questionIds = questions.map((q) => q.id);
+  let rawQuestions = fullQuestionsData ?? [];
+
+  if (fullQueryError) {
+    const { data: fallbackData } = await supabase
+      .from("questions")
+      .select(
+        "id, set_id, type, stem, explanation, source_ref, topic, difficulty, confidence, status, warnings, ai_generated, created_at"
+      )
+      .eq("set_id", questionSet.id)
+      .order("created_at", { ascending: true });
+
+    rawQuestions = (fallbackData ?? []).map((q) => ({
+      ...q,
+      raw_source_text: null,
+      reviewed_by_human: false,
+      reviewed_at: null,
+      updated_at: q.created_at,
+    }));
+  }
+
+  const questionIds = rawQuestions.map((q) => q.id);
 
   const choicesByQuestion = new Map<
     string,
@@ -130,27 +129,28 @@ export default async function QuestionSetDetailPage({
     }
   }
 
-  let highCount = 0;
-  let mediumCount = 0;
-  let lowCount = 0;
-  const shortAnswerCandidates: ShortAnswerQuestionCandidate[] = [];
-
-  questions.forEach((q, idx) => {
-    const conf = q.confidence ?? 0;
-    if (conf >= 0.8) highCount++;
-    else if (conf >= 0.5) mediumCount++;
-    else lowCount++;
-
-    if (q.type === "short_answer") {
-      const ans = answersByQuestion.get(q.id);
-      shortAnswerCandidates.push({
-        id: q.id,
-        orderNumber: idx + 1,
-        stem: q.stem,
-        hasAnswer: Boolean(ans && ans.trim().length > 0),
-      });
-    }
-  });
+  const initialQuestions: ReviewQuestionItem[] = rawQuestions.map((q, idx) => ({
+    id: q.id,
+    set_id: q.set_id,
+    orderNumber: idx + 1,
+    type: q.type,
+    stem: q.stem,
+    explanation: q.explanation,
+    source_ref: q.source_ref,
+    raw_source_text: q.raw_source_text,
+    topic: q.topic,
+    difficulty: q.difficulty,
+    confidence: q.confidence,
+    status: q.status,
+    warnings: Array.isArray(q.warnings) ? q.warnings : [],
+    ai_generated: q.ai_generated,
+    reviewed_by_human: Boolean(q.reviewed_by_human),
+    reviewed_at: q.reviewed_at,
+    created_at: q.created_at,
+    updated_at: q.updated_at ?? q.created_at,
+    choices: choicesByQuestion.get(q.id) ?? [],
+    answer_text: answersByQuestion.get(q.id) ?? null,
+  }));
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -173,180 +173,16 @@ export default async function QuestionSetDetailPage({
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
-        <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs sm:p-6">
-          <div className="space-y-1">
-            <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">
-              {questionSet.title}
-            </h1>
-            <p className="text-sm text-slate-600">
-              {questionSet.subject ?? vi.dashboard.setCard.subjectFallback} •{" "}
-              {vi.dashboard.setCard.gradePrefix}{" "}
-              {questionSet.grade ?? vi.dashboard.setCard.gradeFallback} •{" "}
-              {vi.dashboard.setCard.createdAtPrefix}{" "}
-              {new Date(questionSet.created_at).toLocaleDateString("vi-VN")}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 pt-2 sm:grid-cols-4">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5">
-              <div className="text-lg font-bold text-slate-900">
-                {questions.length}
-              </div>
-              <div className="text-xs text-slate-600">
-                {vi.setDetails.totalQuestionsLabel}
-              </div>
-            </div>
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 px-3.5 py-2.5">
-              <div className="text-lg font-bold text-emerald-800">
-                {highCount}
-              </div>
-              <div className="text-xs text-emerald-700">
-                {vi.setDetails.highConfidenceLabel}
-              </div>
-            </div>
-            <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-3.5 py-2.5">
-              <div className="text-lg font-bold text-amber-800">
-                {mediumCount}
-              </div>
-              <div className="text-xs text-amber-700">
-                {vi.setDetails.mediumConfidenceLabel}
-              </div>
-            </div>
-            <div className="rounded-xl border border-red-200 bg-red-50/70 px-3.5 py-2.5">
-              <div className="text-lg font-bold text-red-800">{lowCount}</div>
-              <div className="text-xs text-red-700">
-                {vi.setDetails.lowConfidenceLabel}
-              </div>
-            </div>
-          </div>
-
-          <p className="rounded-xl border border-teal-100 bg-teal-50/60 px-4 py-2.5 text-xs text-teal-900">
-            {vi.setDetails.draftNotice}
-          </p>
-        </section>
-
-        <DistractorGeneratorPanel
+      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+        <ReviewWorkspace
           setId={questionSet.id}
-          candidates={shortAnswerCandidates}
-          initialRemainingQuota={quotaStatus.remainingToday}
+          title={questionSet.title}
+          subject={questionSet.subject}
+          grade={questionSet.grade}
+          createdAt={questionSet.created_at}
+          initialQuestions={initialQuestions}
+          initialRemainingAiQuota={quotaStatus.remainingToday}
         />
-
-        <section className="space-y-4">
-          {questions.map((q, index) => {
-            const choices = choicesByQuestion.get(q.id) ?? [];
-            const answerText = answersByQuestion.get(q.id);
-            const badge = getConfidenceBadge(q.confidence);
-            const warningList = Array.isArray(q.warnings) ? q.warnings : [];
-
-            return (
-              <Card key={q.id} className="border-slate-200">
-                <CardContent className="space-y-3 p-5">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-lg bg-teal-600 px-2.5 py-1 text-xs font-bold text-white">
-                        {vi.setDetails.questionNumberPrefix} {index + 1}
-                      </span>
-                      <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
-                        {vi.parsing.questionTypes[q.type]}
-                      </span>
-                      <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600">
-                        {vi.setDetails.statusBadges[q.status]}
-                      </span>
-                      {q.ai_generated ? (
-                        <span className="rounded-full bg-teal-700 px-2 py-0.5 text-[11px] font-bold text-white">
-                          {vi.app.aiBadge}
-                        </span>
-                      ) : null}
-                      {q.source_ref ? (
-                        <span className="text-xs text-slate-500">
-                          {vi.setDetails.sourceRefLabel} {q.source_ref}
-                        </span>
-                      ) : null}
-                    </div>
-
-                    <span
-                      className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${badge.className}`}
-                    >
-                      {badge.label}{" "}
-                      {q.confidence !== null
-                        ? `(${Math.round(q.confidence * 100)}%)`
-                        : ""}
-                    </span>
-                  </div>
-
-                  <p className="text-base font-medium text-slate-900">
-                    {q.stem}
-                  </p>
-
-                  {choices.length > 0 ? (
-                    <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {choices.map((c, cIdx) => {
-                        const letter = String.fromCharCode(65 + cIdx);
-                        return (
-                          <li
-                            key={c.id}
-                            className={`flex items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 text-sm ${
-                              c.is_correct
-                                ? "border-emerald-300 bg-emerald-50 font-semibold text-emerald-900"
-                                : "border-slate-200 bg-slate-50/60 text-slate-700"
-                            }`}
-                          >
-                            <span>
-                              <span className="font-bold">{letter}.</span>{" "}
-                              {c.text} {c.is_correct ? "✓" : ""}
-                            </span>
-                            {c.ai_generated ? (
-                              <span className="shrink-0 rounded-full bg-teal-700/90 px-2 py-0.5 text-[10px] font-bold text-white">
-                                {vi.app.aiBadge}
-                              </span>
-                            ) : null}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  ) : (
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm">
-                      <span className="font-semibold text-slate-700">
-                        {vi.setDetails.correctAnswerLabel}
-                      </span>{" "}
-                      {answerText ? (
-                        <span className="font-semibold text-emerald-800">
-                          {answerText}
-                        </span>
-                      ) : (
-                        <span className="font-medium text-red-600">
-                          {vi.setDetails.noAnswerFound}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {q.explanation ? (
-                    <p className="text-xs text-slate-600">
-                      <span className="font-semibold">
-                        {vi.setDetails.explanationLabel}
-                      </span>{" "}
-                      {q.explanation}
-                    </p>
-                  ) : null}
-
-                  {warningList.length > 0 ? (
-                    <div
-                      role="alert"
-                      className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-900"
-                    >
-                      <span className="font-semibold">
-                        {vi.setDetails.warningsTitle}
-                      </span>{" "}
-                      {warningList.join(" • ")}
-                    </div>
-                  ) : null}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </section>
       </main>
     </div>
   );

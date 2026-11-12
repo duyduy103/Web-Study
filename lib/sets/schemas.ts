@@ -52,6 +52,7 @@ export const parsedQuestionInputSchema = z.object({
   confidence: z.number().min(0).max(1),
   warnings: z.array(z.string()),
   sourceRef: z.string(),
+  rawBlockText: z.string().optional(),
   aiGenerated: z.boolean().optional(),
 });
 

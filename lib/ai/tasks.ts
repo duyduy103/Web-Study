@@ -27,7 +27,7 @@ import { normalizeInlineWhitespace } from "@/lib/parsing/normalize";
 
 export const LOW_CONFIDENCE_THRESHOLD = 0.8;
 export const AI_QUESTION_BATCH_SIZE = 25;
-export const PDF_PAGES_PER_BATCH = 10;
+export const PDF_PAGES_PER_BATCH = 3;
 
 export interface AiExtractBatchResult {
   questions: ParsedQuestion[];

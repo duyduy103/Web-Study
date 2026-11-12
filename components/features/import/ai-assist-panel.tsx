@@ -7,7 +7,8 @@ import type { ParsedQuestion } from "@/lib/parsing/types";
 import type { PreviewResponsePayload } from "@/lib/sets/import-service";
 
 const BATCH_SIZE_QUESTIONS = 25;
-const PAGES_PER_BATCH = 10;
+const PAGES_PER_BATCH = 3;
+const TEXT_CHARS_PER_BATCH = 5000;
 
 interface BatchTaskItem {
   id: number;
@@ -44,6 +45,14 @@ export function AiAssistPanel({
     preview.remainingAiQuota
   );
   const [lastCacheHit, setLastCacheHit] = React.useState(false);
+  const [isGeneratingDistractors, setIsGeneratingDistractors] =
+    React.useState(false);
+  const [distractorUndoQuestions, setDistractorUndoQuestions] = React.useState<
+    ParsedQuestion[] | null
+  >(null);
+  const [distractorError, setDistractorError] = React.useState<string | null>(
+    null
+  );
   const abortControllerRef = React.useRef<AbortController | null>(null);
 
   React.useEffect(() => {
@@ -106,6 +115,77 @@ export function AiAssistPanel({
       return items;
     }
 
+    // Chế độ whole cho văn bản dài: chia theo cụm 25 câu hoặc theo đoạn ~5000 ký tự
+    if (!preview.isMultimodal) {
+      if (preview.allQuestions.length > BATCH_SIZE_QUESTIONS) {
+        const items: BatchTaskItem[] = [];
+        const totalBatches = Math.ceil(
+          preview.allQuestions.length / BATCH_SIZE_QUESTIONS
+        );
+        for (
+          let i = 0;
+          i < preview.allQuestions.length;
+          i += BATCH_SIZE_QUESTIONS
+        ) {
+          const chunk = preview.allQuestions.slice(i, i + BATCH_SIZE_QUESTIONS);
+          const batchNumber = items.length + 1;
+          const combinedText = chunk
+            .map(
+              (q, idx) =>
+                `--- CÂU #${i + idx + 1} (${q.sourceRef}) ---\n${
+                  q.rawBlockText ?? q.stem
+                }`
+            )
+            .join("\n\n");
+          items.push({
+            id: batchNumber,
+            label: `${vi.ai.suggestion.progressProcessingBatchPrefix} ${batchNumber}/${totalBatches}...`,
+            mode: "whole",
+            contextHint: `Lô câu hỏi ${batchNumber}/${totalBatches} (từ câu ${
+              i + 1
+            } đến câu ${i + chunk.length})`,
+            batchText: combinedText,
+            status: "pending",
+          });
+        }
+        return items;
+      }
+
+      const fullText = (preview.rawExtractedText || pastedText).trim();
+      if (fullText.length > TEXT_CHARS_PER_BATCH) {
+        const paragraphs = fullText.split(/\n{2,}/);
+        const chunks: string[] = [];
+        let currentChunk = "";
+        for (const p of paragraphs) {
+          if (
+            currentChunk.length + p.length + 2 > TEXT_CHARS_PER_BATCH &&
+            currentChunk.length > 0
+          ) {
+            chunks.push(currentChunk);
+            currentChunk = p;
+          } else {
+            currentChunk = currentChunk ? `${currentChunk}\n\n${p}` : p;
+          }
+        }
+        if (currentChunk) {
+          chunks.push(currentChunk);
+        }
+
+        if (chunks.length > 1) {
+          return chunks.map((chunkText, idx) => ({
+            id: idx + 1,
+            label: `${vi.ai.suggestion.progressProcessingBatchPrefix} ${
+              idx + 1
+            }/${chunks.length}...`,
+            mode: "whole",
+            contextHint: `Phần văn bản ${idx + 1}/${chunks.length}`,
+            batchText: chunkText,
+            status: "pending",
+          }));
+        }
+      }
+    }
+
     return [
       {
         id: 1,
@@ -114,7 +194,7 @@ export function AiAssistPanel({
           : `${vi.ai.suggestion.progressProcessingBatchPrefix} 1/1...`,
         mode: "whole",
         contextHint: preview.isMultimodal
-          ? `Trang 1-${preview.pageCount ?? 1}`
+          ? `Chỉ trích xuất các câu hỏi thuộc từ Trang 1 đến Trang ${preview.pageCount ?? 1}`
           : "Toàn bộ văn bản",
         batchText: preview.isMultimodal
           ? undefined
@@ -252,6 +332,103 @@ export function AiAssistPanel({
     setIsRunning(false);
   }
 
+  const shortAnswerIndices = React.useMemo(() => {
+    const indices: number[] = [];
+    preview.allQuestions.forEach((q, idx) => {
+      if (q.type === "short_answer" && q.answerText && q.answerText.trim()) {
+        indices.push(idx);
+      }
+    });
+    return indices;
+  }, [preview.allQuestions]);
+
+  async function handleGenerateDistractorsInPreview() {
+    if (shortAnswerIndices.length === 0) return;
+
+    setIsGeneratingDistractors(true);
+    setDistractorError(null);
+    const snapshotBefore = preview.allQuestions.map((q) => ({ ...q }));
+
+    try {
+      const updatedQuestions = [...preview.allQuestions];
+      let latestQuota: number | undefined;
+
+      for (let i = 0; i < shortAnswerIndices.length; i += BATCH_SIZE_QUESTIONS) {
+        const chunkIndices = shortAnswerIndices.slice(
+          i,
+          i + BATCH_SIZE_QUESTIONS
+        );
+        const items = chunkIndices.map((idx) => ({
+          questionId: String(idx),
+          stem: preview.allQuestions[idx].stem,
+          correctAnswer: preview.allQuestions[idx].answerText ?? "",
+        }));
+
+        const res = await fetch("/api/ai/distractors", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "preview_generate",
+            items,
+          }),
+        });
+
+        const data: unknown = await res.json();
+        if (!res.ok) {
+          const errObj = data as { error?: string };
+          throw new Error(errObj.error ?? vi.ai.callFailed);
+        }
+
+        const payload = data as {
+          results: Array<{
+            questionId: string;
+            choices: Array<{
+              text: string;
+              isCorrect: boolean;
+              aiGenerated: boolean;
+            }>;
+            explanation: string;
+          }>;
+          remainingQuota?: number;
+        };
+
+        if (typeof payload.remainingQuota === "number") {
+          latestQuota = payload.remainingQuota;
+          setRemainingQuota(payload.remainingQuota);
+        }
+
+        for (const out of payload.results) {
+          const qIndex = Number(out.questionId);
+          const orig = updatedQuestions[qIndex];
+          if (orig) {
+            updatedQuestions[qIndex] = {
+              ...orig,
+              type: "mcq",
+              choices: out.choices,
+              explanation: out.explanation,
+              aiGenerated: true,
+            };
+          }
+        }
+      }
+
+      setDistractorUndoQuestions(snapshotBefore);
+      onQuestionsUpdated(updatedQuestions, latestQuota);
+    } catch (err) {
+      setDistractorError(
+        err instanceof Error ? err.message : vi.ai.callFailed
+      );
+    } finally {
+      setIsGeneratingDistractors(false);
+    }
+  }
+
+  function handleUndoDistractorsInPreview() {
+    if (!distractorUndoQuestions) return;
+    onQuestionsUpdated(distractorUndoQuestions, remainingQuota);
+    setDistractorUndoQuestions(null);
+  }
+
   const hasFailedBatches = batches.some((b) => b.status === "error");
   const canFixLow =
     !preview.isMultimodal &&
@@ -350,6 +527,54 @@ export function AiAssistPanel({
           ) : null}
         </div>
       </div>
+
+      {shortAnswerIndices.length > 0 || distractorUndoQuestions ? (
+        <div className="flex flex-col justify-between gap-3 rounded-xl border border-teal-200 bg-teal-50/70 p-3.5 sm:flex-row sm:items-center">
+          <div className="space-y-0.5">
+            <div className="text-xs font-bold text-teal-950">
+              {vi.ai.distractors.panelTitle} ({shortAnswerIndices.length}{" "}
+              {vi.ai.distractors.selectedCountSuffix})
+            </div>
+            <p className="text-xs text-slate-700">
+              {vi.ai.distractors.panelSubtitle}
+            </p>
+            {distractorError ? (
+              <p className="text-xs font-medium text-red-700">
+                {distractorError}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {shortAnswerIndices.length > 0 ? (
+              <Button
+                type="button"
+                size="sm"
+                disabled={isGeneratingDistractors || isRunning}
+                onClick={() => void handleGenerateDistractorsInPreview()}
+              >
+                {isGeneratingDistractors
+                  ? vi.ai.distractors.generatingButton
+                  : `${vi.ai.distractors.generateButton} (${Math.ceil(
+                      shortAnswerIndices.length / BATCH_SIZE_QUESTIONS
+                    )} ${vi.dashboard.aiQuotaUnit})`}
+              </Button>
+            ) : null}
+
+            {distractorUndoQuestions ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isGeneratingDistractors}
+                onClick={handleUndoDistractorsInPreview}
+              >
+                {vi.ai.distractors.undoButton}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       {batches.length > 0 ? (
         <div className="space-y-2 border-t border-teal-200/70 pt-3">

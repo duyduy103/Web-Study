@@ -58,8 +58,19 @@ export interface CallStructuredResult<TOutput> {
   remainingQuota?: number;
 }
 
-const DEFAULT_TIMEOUT_MS = 45_000;
+const DEFAULT_TIMEOUT_MS = 90_000;
 const DEFAULT_MAX_RETRIES = 2; // Thử lại tối đa 2 lần (tổng cộng tối đa 3 lần gọi)
+
+function stripMarkdownJsonFences(raw: string): string {
+  const trimmed = raw.trim();
+  if (trimmed.startsWith("```")) {
+    return trimmed
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```$/, "")
+      .trim();
+  }
+  return trimmed;
+}
 
 async function defaultGeminiGenerator(params: {
   model: string;
@@ -98,6 +109,7 @@ async function defaultGeminiGenerator(params: {
           responseMimeType: "application/json",
           responseSchema: params.responseSchema,
           temperature: 0.1,
+          maxOutputTokens: 16384,
         },
       }),
       timeoutPromise,
@@ -169,7 +181,8 @@ export async function callGeminiStructured<TOutput>(
         timeoutMs,
       });
 
-      const jsonParsed: unknown = JSON.parse(rawResp.text);
+      const cleanedText = stripMarkdownJsonFences(rawResp.text);
+      const jsonParsed: unknown = JSON.parse(cleanedText);
       const validated = options.zodSchema.safeParse(jsonParsed);
 
       if (!validated.success) {

@@ -198,6 +198,17 @@ export async function buildSourcePreview(
       ? Math.ceil(needsFixCount / AI_QUESTION_BATCH_SIZE)
       : 0;
 
+  const estimatedWholeByQuestions =
+    total > 0 ? Math.ceil(total / AI_QUESTION_BATCH_SIZE) : 1;
+  const estimatedWholeByChars = Math.max(
+    1,
+    Math.ceil(extracted.text.length / 5000)
+  );
+  const estimatedWhole = Math.max(
+    estimatedWholeByQuestions,
+    estimatedWholeByChars
+  );
+
   return {
     detectedFormat: parsed.detectedFormat,
     totalQuestions: total,
@@ -209,7 +220,7 @@ export async function buildSourcePreview(
     isSpreadsheet: extracted.isSpreadsheet,
     isMultimodal: false,
     aiSuggested,
-    estimatedAiCallsWhole: 1,
+    estimatedAiCallsWhole: estimatedWhole,
     estimatedAiCallsFixLow: estimatedFixLow,
     remainingAiQuota,
     spreadsheetHeaders: parsed.spreadsheetHeaders,
@@ -346,6 +357,7 @@ export async function importQuestionSetToDatabase(params: {
           stem: q.stem,
           explanation: q.explanation ?? null,
           source_ref: q.sourceRef,
+          raw_source_text: q.rawBlockText ?? null,
           topic: q.topic ?? null,
           difficulty: q.difficulty ?? null,
           confidence: q.confidence,

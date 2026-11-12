@@ -123,13 +123,17 @@ export type Database = {
           stem: string;
           explanation: string | null;
           source_ref: string | null;
+          raw_source_text: string | null;
           topic: string | null;
           difficulty: string | null;
           confidence: number | null;
           status: QuestionStatus;
           warnings: string[];
           ai_generated: boolean;
+          reviewed_by_human: boolean;
+          reviewed_at: string | null;
           created_at: string;
+          updated_at: string;
         };
         Insert: {
           id?: string;
@@ -138,13 +142,17 @@ export type Database = {
           stem: string;
           explanation?: string | null;
           source_ref?: string | null;
+          raw_source_text?: string | null;
           topic?: string | null;
           difficulty?: string | null;
           confidence?: number | null;
           status?: QuestionStatus;
           warnings?: string[];
           ai_generated?: boolean;
+          reviewed_by_human?: boolean;
+          reviewed_at?: string | null;
           created_at?: string;
+          updated_at?: string;
         };
         Update: {
           id?: string;
@@ -153,13 +161,17 @@ export type Database = {
           stem?: string;
           explanation?: string | null;
           source_ref?: string | null;
+          raw_source_text?: string | null;
           topic?: string | null;
           difficulty?: string | null;
           confidence?: number | null;
           status?: QuestionStatus;
           warnings?: string[];
           ai_generated?: boolean;
+          reviewed_by_human?: boolean;
+          reviewed_at?: string | null;
           created_at?: string;
+          updated_at?: string;
         };
         Relationships: [
           {
@@ -553,6 +565,27 @@ export type Database = {
           p_tokens: number;
         };
         Returns: undefined;
+      };
+      save_question_inline: {
+        Args: {
+          p_question_id: string;
+          p_expected_updated_at?: string | null;
+          p_type: string;
+          p_stem: string;
+          p_explanation?: string | null;
+          p_topic?: string | null;
+          p_difficulty?: string | null;
+          p_status?: string;
+          p_choices?: Json;
+          p_answer_text?: string | null;
+        };
+        Returns: Json;
+      };
+      restore_questions_snapshot: {
+        Args: {
+          p_snapshots: Json;
+        };
+        Returns: Json;
       };
     };
     Enums: {
