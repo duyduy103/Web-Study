@@ -14,8 +14,10 @@ import {
 } from "@/components/ui/card";
 import { ColumnMappingEditor } from "@/components/features/import/column-mapping-editor";
 import { PreviewPanel } from "@/components/features/import/preview-panel";
+import { AiAssistPanel } from "@/components/features/import/ai-assist-panel";
 import type {
   DocumentFormat,
+  ParsedQuestion,
   SpreadsheetColumnMapping,
 } from "@/lib/parsing/types";
 import type {
@@ -146,6 +148,32 @@ export function ImportSetForm() {
     });
   }
 
+  function handleAiQuestionsUpdated(
+    nextQuestions: ParsedQuestion[],
+    nextRemainingQuota?: number
+  ) {
+    if (!preview) return;
+    let high = 0;
+    let medium = 0;
+    let low = 0;
+    for (const q of nextQuestions) {
+      if (q.confidence >= 0.8) high++;
+      else if (q.confidence >= 0.5) medium++;
+      else low++;
+    }
+
+    setPreview({
+      ...preview,
+      totalQuestions: nextQuestions.length,
+      confidenceCounts: { high, medium, low },
+      previewQuestions: nextQuestions.slice(0, 3),
+      allQuestions: nextQuestions,
+      aiSuggested: false,
+      estimatedAiCallsFixLow: Math.ceil((medium + low) / 25),
+      remainingAiQuota: nextRemainingQuota ?? preview.remainingAiQuota,
+    });
+  }
+
   async function submitImport(forceDuplicate = false) {
     if (!title.trim()) {
       setErrorMessage(vi.importSet.validation.titleRequired);
@@ -171,6 +199,12 @@ export function ImportSetForm() {
       if (selectedFormat) formData.append("overrideFormat", selectedFormat);
       if (columnMapping) {
         formData.append("columnMapping", JSON.stringify(columnMapping));
+      }
+      if (preview && preview.allQuestions.length > 0) {
+        formData.append(
+          "preParsedQuestions",
+          JSON.stringify(preview.allQuestions)
+        );
       }
       if (forceDuplicate) {
         formData.append("forceDuplicate", "true");
@@ -336,7 +370,7 @@ export function ImportSetForm() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".docx,.xlsx,.csv,.txt,.pdf"
+                accept=".docx,.pdf,.xlsx,.csv,.txt,.png,.jpg,.jpeg"
                 className="hidden"
                 onChange={(e) =>
                   handleFileSelected(e.target.files?.[0] ?? null)
@@ -420,6 +454,15 @@ export function ImportSetForm() {
         />
       ) : null}
 
+      {preview && !preview.isSpreadsheet ? (
+        <AiAssistPanel
+          preview={preview}
+          selectedFile={activeTab === "upload" ? selectedFile : null}
+          pastedText={activeTab === "paste" ? pastedText : ""}
+          onQuestionsUpdated={handleAiQuestionsUpdated}
+        />
+      ) : null}
+
       {preview ? (
         <PreviewPanel
           preview={preview}
@@ -444,4 +487,3 @@ export function ImportSetForm() {
     </div>
   );
 }
-

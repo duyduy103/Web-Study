@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { vi } from "@/lib/i18n/vi";
 import {
@@ -7,9 +8,15 @@ import {
 } from "@/lib/sets/import-service";
 import {
   importMetadataSchema,
+  parsedQuestionInputSchema,
   spreadsheetMappingSchema,
 } from "@/lib/sets/schemas";
-import type { SpreadsheetColumnMapping } from "@/lib/parsing";
+import type {
+  ParsedQuestion,
+  SpreadsheetColumnMapping,
+} from "@/lib/parsing";
+
+const preParsedArraySchema = z.array(parsedQuestionInputSchema);
 
 export async function POST(request: Request) {
   try {
@@ -63,6 +70,20 @@ export async function POST(request: Request) {
       }
     }
 
+    const preParsedRaw = formData.get("preParsedQuestions");
+    let preParsedQuestions: ParsedQuestion[] | undefined;
+    if (typeof preParsedRaw === "string" && preParsedRaw.length > 0) {
+      try {
+        const jsonParsed: unknown = JSON.parse(preParsedRaw);
+        const validated = preParsedArraySchema.safeParse(jsonParsed);
+        if (validated.success && validated.data.length > 0) {
+          preParsedQuestions = validated.data;
+        }
+      } catch {
+        // Nếu lỗi parse JSON thì tách lại từ nguồn
+      }
+    }
+
     const source = await validateAndReadSource(file, pastedText);
     const result = await importQuestionSetToDatabase({
       supabase,
@@ -74,6 +95,7 @@ export async function POST(request: Request) {
       overrideFormat: parsedMeta.data.overrideFormat,
       columnMapping,
       forceDuplicate: parsedMeta.data.forceDuplicate,
+      preParsedQuestions,
     });
 
     return NextResponse.json(result);
@@ -83,4 +105,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
-

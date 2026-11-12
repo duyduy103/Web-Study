@@ -3,7 +3,16 @@ import { vi } from "@/lib/i18n/vi";
 
 export const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB
 
-export const ALLOWED_EXTENSIONS = [".docx", ".xlsx", ".csv", ".txt"] as const;
+export const ALLOWED_EXTENSIONS = [
+  ".docx",
+  ".pdf",
+  ".xlsx",
+  ".csv",
+  ".txt",
+  ".png",
+  ".jpg",
+  ".jpeg",
+] as const;
 
 export const documentFormatSchema = z.enum([
   "mcq_inline",
@@ -26,6 +35,26 @@ export const spreadsheetMappingSchema = z.object({
   difficultyCol: z.string().optional(),
 });
 
+export const parsedChoiceInputSchema = z.object({
+  text: z.string().min(1),
+  isCorrect: z.boolean(),
+  aiGenerated: z.boolean().optional(),
+});
+
+export const parsedQuestionInputSchema = z.object({
+  type: z.enum(["mcq", "true_false", "cloze", "short_answer"]),
+  stem: z.string().min(1),
+  choices: z.array(parsedChoiceInputSchema).optional(),
+  answerText: z.string().optional(),
+  explanation: z.string().optional(),
+  topic: z.string().optional(),
+  difficulty: z.string().optional(),
+  confidence: z.number().min(0).max(1),
+  warnings: z.array(z.string()),
+  sourceRef: z.string(),
+  aiGenerated: z.boolean().optional(),
+});
+
 export const importMetadataSchema = z.object({
   title: z
     .string()
@@ -37,4 +66,3 @@ export const importMetadataSchema = z.object({
   overrideFormat: documentFormatSchema.optional(),
   forceDuplicate: z.boolean().optional(),
 });
-

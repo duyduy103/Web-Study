@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getUserAiQuotaStatus } from "@/lib/ai/quota-and-cache";
 import { vi } from "@/lib/i18n/vi";
 import {
   Card,
@@ -9,6 +10,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  DistractorGeneratorPanel,
+  type ShortAnswerQuestionCandidate,
+} from "@/components/features/sets/distractor-generator-panel";
 
 interface SetDetailPageProps {
   params: Promise<{ id: string }>;
@@ -47,12 +52,15 @@ export default async function QuestionSetDetailPage({
     redirect("/login");
   }
 
-  const { data: questionSet } = await supabase
-    .from("question_sets")
-    .select("id, title, subject, grade, created_at")
-    .eq("id", id)
-    .eq("owner_id", user.id)
-    .maybeSingle();
+  const [{ data: questionSet }, quotaStatus] = await Promise.all([
+    supabase
+      .from("question_sets")
+      .select("id, title, subject, grade, created_at")
+      .eq("id", id)
+      .eq("owner_id", user.id)
+      .maybeSingle(),
+    getUserAiQuotaStatus(supabase, user.id),
+  ]);
 
   if (!questionSet) {
     return (
@@ -77,7 +85,9 @@ export default async function QuestionSetDetailPage({
 
   const { data: questionsData } = await supabase
     .from("questions")
-    .select("id, type, stem, explanation, source_ref, confidence, status, warnings, created_at")
+    .select(
+      "id, type, stem, explanation, source_ref, confidence, status, warnings, ai_generated, created_at"
+    )
     .eq("set_id", questionSet.id)
     .order("created_at", { ascending: true });
 
@@ -86,7 +96,13 @@ export default async function QuestionSetDetailPage({
 
   const choicesByQuestion = new Map<
     string,
-    Array<{ id: string; text: string; is_correct: boolean; position: number }>
+    Array<{
+      id: string;
+      text: string;
+      is_correct: boolean;
+      position: number;
+      ai_generated: boolean;
+    }>
   >();
   const answersByQuestion = new Map<string, string>();
 
@@ -94,7 +110,7 @@ export default async function QuestionSetDetailPage({
     const [{ data: choicesData }, { data: answersData }] = await Promise.all([
       supabase
         .from("choices")
-        .select("id, question_id, text, is_correct, position")
+        .select("id, question_id, text, is_correct, position, ai_generated")
         .in("question_id", questionIds)
         .order("position", { ascending: true }),
       supabase
@@ -117,12 +133,24 @@ export default async function QuestionSetDetailPage({
   let highCount = 0;
   let mediumCount = 0;
   let lowCount = 0;
-  for (const q of questions) {
+  const shortAnswerCandidates: ShortAnswerQuestionCandidate[] = [];
+
+  questions.forEach((q, idx) => {
     const conf = q.confidence ?? 0;
     if (conf >= 0.8) highCount++;
     else if (conf >= 0.5) mediumCount++;
     else lowCount++;
-  }
+
+    if (q.type === "short_answer") {
+      const ans = answersByQuestion.get(q.id);
+      shortAnswerCandidates.push({
+        id: q.id,
+        orderNumber: idx + 1,
+        stem: q.stem,
+        hasAnswer: Boolean(ans && ans.trim().length > 0),
+      });
+    }
+  });
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -198,6 +226,12 @@ export default async function QuestionSetDetailPage({
           </p>
         </section>
 
+        <DistractorGeneratorPanel
+          setId={questionSet.id}
+          candidates={shortAnswerCandidates}
+          initialRemainingQuota={quotaStatus.remainingToday}
+        />
+
         <section className="space-y-4">
           {questions.map((q, index) => {
             const choices = choicesByQuestion.get(q.id) ?? [];
@@ -219,6 +253,16 @@ export default async function QuestionSetDetailPage({
                       <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600">
                         {vi.setDetails.statusBadges[q.status]}
                       </span>
+                      {q.ai_generated ? (
+                        <span className="rounded-full bg-teal-700 px-2 py-0.5 text-[11px] font-bold text-white">
+                          {vi.app.aiBadge}
+                        </span>
+                      ) : null}
+                      {q.source_ref ? (
+                        <span className="text-xs text-slate-500">
+                          {vi.setDetails.sourceRefLabel} {q.source_ref}
+                        </span>
+                      ) : null}
                     </div>
 
                     <span
@@ -242,14 +286,21 @@ export default async function QuestionSetDetailPage({
                         return (
                           <li
                             key={c.id}
-                            className={`rounded-xl border px-3.5 py-2.5 text-sm ${
+                            className={`flex items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 text-sm ${
                               c.is_correct
                                 ? "border-emerald-300 bg-emerald-50 font-semibold text-emerald-900"
                                 : "border-slate-200 bg-slate-50/60 text-slate-700"
                             }`}
                           >
-                            <span className="font-bold">{letter}.</span>{" "}
-                            {c.text} {c.is_correct ? "✓" : ""}
+                            <span>
+                              <span className="font-bold">{letter}.</span>{" "}
+                              {c.text} {c.is_correct ? "✓" : ""}
+                            </span>
+                            {c.ai_generated ? (
+                              <span className="shrink-0 rounded-full bg-teal-700/90 px-2 py-0.5 text-[10px] font-bold text-white">
+                                {vi.app.aiBadge}
+                              </span>
+                            ) : null}
                           </li>
                         );
                       })}
@@ -300,4 +351,3 @@ export default async function QuestionSetDetailPage({
     </div>
   );
 }
-

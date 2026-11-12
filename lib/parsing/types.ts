@@ -11,6 +11,7 @@ export type DocumentFormat =
 export interface ParsedChoice {
   text: string;
   isCorrect: boolean;
+  aiGenerated?: boolean;
 }
 
 export interface ParsedQuestion {
@@ -24,6 +25,8 @@ export interface ParsedQuestion {
   confidence: number;
   warnings: string[];
   sourceRef: string;
+  aiGenerated?: boolean;
+  rawBlockText?: string;
 }
 
 export interface FormatDetectionResult {
@@ -47,6 +50,9 @@ export interface ExtractedDocument {
   text: string;
   markedText?: string;
   isSpreadsheet: boolean;
+  isMultimodal?: boolean;
+  mimeType?: string;
+  pageCount?: number;
   headers?: string[];
   rows?: Record<string, string>[];
 }

@@ -54,17 +54,23 @@ export function PreviewPanel({
           <h3 className="text-base font-semibold text-slate-900">
             {vi.importSet.previewSectionTitle}
           </h3>
-          <p className="text-sm text-slate-700">
-            {vi.importSet.detectedSummaryPrefix}{" "}
-            <strong className="font-bold text-teal-700">
-              {preview.totalQuestions}
-            </strong>{" "}
-            {vi.importSet.detectedSummaryUnit}{" "}
-            <span className="font-semibold text-slate-900">{formatName}</span>
-          </p>
+          {preview.isMultimodal && preview.totalQuestions === 0 ? (
+            <p className="text-sm text-teal-800">
+              {vi.importSet.multimodalDetectedSummary}
+            </p>
+          ) : (
+            <p className="text-sm text-slate-700">
+              {vi.importSet.detectedSummaryPrefix}{" "}
+              <strong className="font-bold text-teal-700">
+                {preview.totalQuestions}
+              </strong>{" "}
+              {vi.importSet.detectedSummaryUnit}{" "}
+              <span className="font-semibold text-slate-900">{formatName}</span>
+            </p>
+          )}
         </div>
 
-        {!preview.isSpreadsheet ? (
+        {!preview.isSpreadsheet && !preview.isMultimodal ? (
           <div className="w-full sm:w-72">
             <Label htmlFor="override-format" className="mb-1.5 text-xs">
               {vi.importSet.changeFormatLabel}
@@ -144,10 +150,22 @@ export function PreviewPanel({
                   className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/60 p-4"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-teal-800">
-                      {vi.setDetails.questionNumberPrefix} {idx + 1} •{" "}
-                      {vi.parsing.questionTypes[q.type]}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-semibold text-teal-800">
+                        {vi.setDetails.questionNumberPrefix} {idx + 1} •{" "}
+                        {vi.parsing.questionTypes[q.type]}
+                      </span>
+                      {q.aiGenerated ? (
+                        <span className="rounded-full bg-teal-700 px-2 py-0.5 text-[11px] font-bold text-white">
+                          {vi.app.aiBadge}
+                        </span>
+                      ) : null}
+                      {q.sourceRef ? (
+                        <span className="text-xs text-slate-500">
+                          ({q.sourceRef})
+                        </span>
+                      ) : null}
+                    </div>
                     <span
                       className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${badge.className}`}
                     >
@@ -170,8 +188,7 @@ export function PreviewPanel({
                                 : "border-slate-200 bg-white text-slate-700"
                             }`}
                           >
-                            {letter}. {c.text}{" "}
-                            {c.isCorrect ? "✓" : ""}
+                            {letter}. {c.text} {c.isCorrect ? "✓" : ""}
                           </li>
                         );
                       })}
@@ -207,4 +224,3 @@ export function PreviewPanel({
     </div>
   );
 }
-

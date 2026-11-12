@@ -2,6 +2,7 @@ export const vi = {
   app: {
     name: "MemoQuiz",
     roleBadge: "Giáo viên",
+    aiBadge: "AI",
     tagline: "Từ file đề cương đến bộ đề hoàn chỉnh trong vài phút",
     description:
       "Hệ thống tạo đề kiểm tra và ôn tập thông minh dành cho giáo viên và học sinh Việt Nam.",
@@ -17,6 +18,8 @@ export const vi = {
     closeNotification: "Đóng thông báo",
     loading: "Đang xử lý...",
     cancel: "Hủy",
+    retry: "Thử lại",
+    undo: "Hoàn tác",
     optional: "tùy chọn",
   },
   auth: {
@@ -60,6 +63,8 @@ export const vi = {
     defaultTeacherName: "Thầy/Cô",
     subtitle: "Quản lý ngân hàng câu hỏi và đề kiểm tra của bạn tại đây.",
     createSetButton: "Tạo bộ câu hỏi mới",
+    aiQuotaRemainingPrefix: "Lượt AI còn lại hôm nay:",
+    aiQuotaUnit: "lượt",
     comingSoonToast:
       "Sắp có: Tính năng nạp đề cương và tách câu hỏi tự động sẽ mở ở bước tiếp theo!",
     comingSoonBadge: "Sắp có",
@@ -68,7 +73,7 @@ export const vi = {
     emptyState: {
       title: "Chưa có bộ câu hỏi nào",
       description:
-        "Thầy/cô có thể tải lên file đề cương (.docx, .pdf, .xlsx) hoặc dán văn bản để hệ thống tự động tách câu hỏi và đáp án mà không cần gõ tay.",
+        "Thầy/cô có thể tải lên file đề cương (.docx, .pdf, .xlsx, ảnh) hoặc dán văn bản để hệ thống tự động tách câu hỏi và đáp án mà không cần gõ tay.",
       hint: 'Bấm nút "Tạo bộ câu hỏi mới" để bắt đầu.',
     },
     setCard: {
@@ -88,8 +93,11 @@ export const vi = {
   parsing: {
     pdfNotSupported:
       "PDF sẽ được hỗ trợ ở bản cập nhật tới, hiện tại hãy dùng Word, Excel hoặc dán văn bản.",
+    pdfTooManyPagesPrefix:
+      "File PDF vượt quá giới hạn 60 trang ở bản hiện tại (file có",
+    pdfTooManyPagesSuffix: "trang). Vui lòng chia nhỏ file trước khi tải lên.",
     unsupportedFileType:
-      "Định dạng file chưa được hỗ trợ. Vui lòng chọn file .docx, .xlsx, .csv hoặc .txt.",
+      "Định dạng file chưa được hỗ trợ. Vui lòng chọn file .docx, .pdf, .xlsx, .csv, .txt hoặc ảnh (.png, .jpg).",
     emptyContent: "Nội dung trống hoặc không đọc được văn bản từ file.",
     formats: {
       mcq_inline: "Trắc nghiệm có đáp án ngay dưới / đánh dấu trực tiếp",
@@ -106,7 +114,7 @@ export const vi = {
       short_answer: "Tự luận ngắn / Hỏi - Đáp",
     },
     warnings: {
-      missingAnswer: "Không tìm thấy đáp án đúng",
+      missingAnswer: "Không tìm thấy đáp án đúng trong tài liệu",
       multipleCorrectChoices: "Có nhiều hơn 1 đáp án được đánh dấu đúng",
       tooFewChoices: "Số lựa chọn ít hơn 2",
       onlyTwoChoicesMcq: "Chỉ có 2 lựa chọn (thông thường cần 3-4 lựa chọn)",
@@ -128,12 +136,63 @@ export const vi = {
         "Ký hiệu phân tách lựa chọn không đồng nhất (dùng '/', '-' thay vì '.' hoặc ')')",
       informalAnswerLine:
         "Dòng đáp án viết dạng tự do, hệ thống đã trích xuất tự động nhưng cần kiểm tra lại",
+      aiExtractedNotice: "Được trích xuất/cấu trúc lại bởi AI — thầy/cô vui lòng kiểm tra lại",
+    },
+  },
+  ai: {
+    quotaExhausted: "Bạn đã dùng hết lượt AI hôm nay, quay lại vào ngày mai.",
+    missingApiKey: "Chưa cấu hình khóa GEMINI_API_KEY hoặc tên model trên máy chủ.",
+    callFailed:
+      "Không thể xử lý bằng AI lúc này sau khi đã thử lại. Vui lòng thử lại sau.",
+    timeoutError: "Yêu cầu tới AI quá thời gian chờ. Vui lòng thử lại.",
+    invalidSchemaError:
+      "Phản hồi từ AI không đúng cấu trúc chuẩn. Vui lòng thử lại.",
+    suggestion: {
+      titlePdfOrImage: "Dùng AI để đọc file PDF / Ảnh này",
+      titleLowConfidence:
+        "Phát hiện nhiều câu hỏi có độ tin cậy thấp hoặc chưa tách được",
+      descriptionPdf:
+        "File PDF/Ảnh cần dùng AI để đọc chữ và nhận diện cấu trúc câu hỏi - đáp án.",
+      descriptionLowConfidence:
+        "Thầy/cô có thể dùng AI để chuẩn hóa các câu bị lỗi mà vẫn giữ nguyên những câu đã tách tốt.",
+      estimatedCallsPrefix: "Ước tính tiêu tốn:",
+      estimatedCallsUnit: "lượt AI",
+      remainingTodayPrefix: "• Còn lại hôm nay:",
+      cacheHitBadge: "Đã có trong bộ nhớ đệm (0 lượt AI)",
+      runWholeButton: "Dùng AI đọc toàn bộ file",
+      runFixLowButton: "Chỉ dùng AI sửa các câu độ tin cậy thấp/trung bình",
+      tryAiManualButton: "Thử bằng AI",
+      cancelAiButton: "Dừng xử lý AI",
+      retryFailedBatchesButton: "Thử lại các lô bị lỗi",
+      progressReadingPagesPrefix: "Đang đọc trang",
+      progressProcessingBatchPrefix: "Đang xử lý lô câu hỏi",
+      batchCompletedPrefix: "Đã hoàn thành",
+      batchFailedPrefix: "Lô bị lỗi:",
+    },
+    distractors: {
+      panelTitle: "Tạo đáp án nhiễu & giải thích bằng AI",
+      panelSubtitle:
+        "Chuyển các câu Hỏi - Đáp ngắn đã có đáp án đúng thành câu Trắc nghiệm 4 lựa chọn.",
+      selectAllShortAnswers: "Chọn tất cả câu Hỏi - Đáp ngắn hợp lệ",
+      selectedCountPrefix: "Đã chọn:",
+      selectedCountSuffix: "câu",
+      estimatedCostPrefix: "Ước tính:",
+      generateButton: "Tạo đáp án nhiễu & giải thích",
+      generatingButton: "Đang sinh đáp án nhiễu...",
+      undoButton: "Hoàn tác về Hỏi - Đáp ngắn",
+      undoingButton: "Đang hoàn tác...",
+      undoSuccessNotice:
+        "Đã hoàn tác các câu hỏi về dạng Hỏi - Đáp ngắn ban đầu.",
+      skippedTitle: "Các câu bị bỏ qua (chưa có đáp án đúng):",
+      skippedReasonMissingAnswer: "Thiếu đáp án đúng nên AI không tự suy diễn",
+      successPrefix: "Đã tạo thành công đáp án nhiễu và giải thích cho",
+      successSuffix: "câu hỏi!",
     },
   },
   importSet: {
     pageTitle: "Tạo bộ câu hỏi mới",
     pageSubtitle:
-      "Nạp đề cương Word, bảng Excel hoặc dán văn bản. Hệ thống sẽ tự động tách câu hỏi và đáp án.",
+      "Nạp đề cương Word, PDF, ảnh chụp, bảng Excel hoặc dán văn bản. Hệ thống sẽ tự động tách câu hỏi và đáp án.",
     metadataSectionTitle: "1. Thông tin bộ câu hỏi",
     titleLabel: "Tên bộ câu hỏi *",
     titlePlaceholder: "Ví dụ: Đề cương ôn tập Lịch sử lớp 9 - Học kỳ 1",
@@ -142,10 +201,11 @@ export const vi = {
     gradeLabel: "Khối / Lớp (tùy chọn)",
     gradePlaceholder: "Ví dụ: Lớp 9",
     sourceSectionTitle: "2. Nguồn nội dung",
-    tabUploadFile: "Tải file lên (.docx, .xlsx, .csv, .txt)",
+    tabUploadFile: "Tải file lên (.docx, .pdf, .xlsx, .csv, .txt, .png, .jpg)",
     tabPasteText: "Dán văn bản trực tiếp",
     dropzoneTitle: "Kéo thả file đề cương vào đây hoặc bấm để chọn file",
-    dropzoneSubtitle: "Hỗ trợ .docx, .xlsx, .csv, .txt • Tối đa 20MB",
+    dropzoneSubtitle:
+      "Hỗ trợ .docx, .pdf, .xlsx, .csv, .txt, .png, .jpg • Tối đa 20MB (PDF tối đa 60 trang)",
     selectedFilePrefix: "Đã chọn file:",
     changeFileButton: "Chọn file khác",
     pasteLabel: "Dán nội dung đề cương hoặc câu hỏi vào ô bên dưới",
@@ -160,13 +220,15 @@ export const vi = {
     previewSectionTitle: "3. Xem trước kết quả nhận diện",
     detectedSummaryPrefix: "Tôi tìm thấy",
     detectedSummaryUnit: "câu hỏi, kiểu:",
+    multimodalDetectedSummary:
+      "File PDF / Ảnh đã sẵn sàng. Bấm nút bên dưới để dùng AI đọc và tách câu hỏi.",
     changeFormatLabel: "Đổi kiểu nhận diện nếu chưa đúng:",
     confidenceStatsHigh: "Tin cậy cao (Xanh)",
     confidenceStatsMedium: "Cần xem lại (Vàng)",
     confidenceStatsLow: "Thiếu/Lỗi (Đỏ)",
     previewFirstQuestionsTitle: "Xem trước 3 câu đầu tiên:",
     previewNoQuestions:
-      "Chưa tách được câu hỏi nào với kiểu định dạng này. Thầy/cô hãy thử đổi kiểu nhận diện hoặc kiểm tra lại nội dung.",
+      "Chưa tách được câu hỏi nào bằng quy tắc. Thầy/cô có thể đổi kiểu nhận diện hoặc bấm 'Dùng AI' ở bên dưới.",
     columnMappingTitle: "Ánh xạ cột dữ liệu Excel / CSV",
     columnMappingDescription:
       "Hệ thống đã tự đoán các cột dựa theo dòng tiêu đề. Thầy/cô có thể chỉnh lại nếu cần:",
@@ -195,7 +257,7 @@ export const vi = {
       sourceRequired: "Vui lòng chọn file hoặc dán văn bản câu hỏi.",
       fileTooLarge: "Kích thước file vượt quá giới hạn 20MB.",
       noQuestionsParsed:
-        "Không tìm thấy câu hỏi hợp lệ nào để lưu. Vui lòng kiểm tra lại định dạng nội dung.",
+        "Không tìm thấy câu hỏi hợp lệ nào để lưu. Vui lòng kiểm tra lại định dạng hoặc dùng AI đọc file.",
     },
     errors: {
       unauthorized: "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
@@ -207,7 +269,7 @@ export const vi = {
   setDetails: {
     backToList: "Danh sách bộ câu hỏi",
     draftNotice:
-      "Các câu hỏi dưới đây đang ở trạng thái Nháp (Draft). Tính năng sửa trực tiếp tại dòng và duyệt hàng loạt sẽ mở ở bước tiếp theo.",
+      "Các câu hỏi dưới đây đang ở trạng thái Nháp (Draft). Những câu hoặc đáp án có nhãn 'AI' được sinh tự động, thầy/cô hãy kiểm tra kỹ trước khi duyệt.",
     totalQuestionsLabel: "Tổng số câu",
     highConfidenceLabel: "Tin cậy cao (Xanh)",
     mediumConfidenceLabel: "Cần kiểm tra (Vàng)",

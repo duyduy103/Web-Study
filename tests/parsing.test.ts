@@ -114,15 +114,34 @@ describe("MemoQuiz Rule-based Parsing Suite", () => {
     }
   });
 
-  it("2. Từ chối file PDF với thông báo lỗi tiếng Việt thân thiện", async () => {
-    const fakePdfBuffer = Buffer.from("%PDF-1.5 fake pdf content", "utf-8");
+  it("2. Nhận diện file PDF/Ảnh là tài liệu đa phương thức (isMultimodal) và chặn PDF vượt quá 60 trang", async () => {
+    const validPdfBuffer = Buffer.from(
+      "%PDF-1.5\n1 0 obj << /Type /Page >> endobj\n2 0 obj << /Type /Page >> endobj",
+      "utf-8"
+    );
+    const pdfExtracted = await extractText({
+      buffer: validPdfBuffer,
+      fileName: "de_cuong_lich_su.pdf",
+      mimeType: "application/pdf",
+    });
+    expect(pdfExtracted.isMultimodal).toBe(true);
+    expect(pdfExtracted.mimeType).toBe("application/pdf");
+    expect(pdfExtracted.pageCount).toBe(2);
+
+    // File PDF có 65 trang (> 60 trang tối đa) -> từ chối
+    const pages65 = Array.from(
+      { length: 65 },
+      (_, idx) => `${idx + 1} 0 obj << /Type /Page >> endobj`
+    ).join("\n");
+    const hugePdfBuffer = Buffer.from(`%PDF-1.5\n${pages65}`, "utf-8");
+
     await expect(
       extractText({
-        buffer: fakePdfBuffer,
-        fileName: "de_cuong_lich_su.pdf",
+        buffer: hugePdfBuffer,
+        fileName: "de_cuong_65_trang.pdf",
         mimeType: "application/pdf",
       })
-    ).rejects.toThrow(vi.parsing.pdfNotSupported);
+    ).rejects.toThrow(vi.parsing.pdfTooManyPagesPrefix);
   });
 
   it("3. Xử lý trường hợp biên: câu thiếu đáp án, đánh số nhảy cách, lựa chọn nhiều dòng", async () => {

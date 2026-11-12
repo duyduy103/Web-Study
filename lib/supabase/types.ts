@@ -128,6 +128,7 @@ export type Database = {
           confidence: number | null;
           status: QuestionStatus;
           warnings: string[];
+          ai_generated: boolean;
           created_at: string;
         };
         Insert: {
@@ -142,6 +143,7 @@ export type Database = {
           confidence?: number | null;
           status?: QuestionStatus;
           warnings?: string[];
+          ai_generated?: boolean;
           created_at?: string;
         };
         Update: {
@@ -156,6 +158,7 @@ export type Database = {
           confidence?: number | null;
           status?: QuestionStatus;
           warnings?: string[];
+          ai_generated?: boolean;
           created_at?: string;
         };
         Relationships: [
@@ -175,6 +178,7 @@ export type Database = {
           text: string;
           is_correct: boolean;
           position: number;
+          ai_generated: boolean;
           created_at: string;
         };
         Insert: {
@@ -183,6 +187,7 @@ export type Database = {
           text: string;
           is_correct?: boolean;
           position?: number;
+          ai_generated?: boolean;
           created_at?: string;
         };
         Update: {
@@ -191,6 +196,7 @@ export type Database = {
           text?: string;
           is_correct?: boolean;
           position?: number;
+          ai_generated?: boolean;
           created_at?: string;
         };
         Relationships: [
@@ -495,12 +501,59 @@ export type Database = {
           }
         ];
       };
+      ai_cache: {
+        Row: {
+          id: string;
+          owner_id: string;
+          cache_key: string;
+          task: string;
+          result: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          owner_id: string;
+          cache_key: string;
+          task: string;
+          result: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          owner_id?: string;
+          cache_key?: string;
+          task?: string;
+          result?: Json;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ai_cache_owner_id_fkey";
+            columns: ["owner_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      consume_ai_quota: {
+        Args: {
+          p_daily_limit?: number;
+          p_tokens?: number;
+        };
+        Returns: Json;
+      };
+      record_ai_tokens: {
+        Args: {
+          p_tokens: number;
+        };
+        Returns: undefined;
+      };
     };
     Enums: {
       [_ in never]: never;

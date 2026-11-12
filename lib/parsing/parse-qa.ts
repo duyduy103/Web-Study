@@ -99,6 +99,7 @@ export function parseQaDocument(text: string): ParsedQuestion[] {
         confidence,
         warnings,
         sourceRef,
+        rawBlockText: answerText ? `${stem}\nTrả lời: ${answerText}` : stem,
       });
     }
 

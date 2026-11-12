@@ -4,6 +4,8 @@ import { vi } from "@/lib/i18n/vi";
 import { normalizeInlineWhitespace, normalizeText } from "@/lib/parsing/normalize";
 import type { ExtractedDocument } from "@/lib/parsing/types";
 
+export const MAX_PDF_PAGES = 60;
+
 export interface ExtractInput {
   buffer?: Buffer;
   text?: string;
@@ -17,15 +19,64 @@ export async function extractText(
   const fileName = (input.fileName ?? "").toLowerCase();
   const mimeType = (input.mimeType ?? "").toLowerCase();
 
+  // 1. Kiểm tra file PDF (bao gồm cả PDF có chữ và PDF scan)
   if (
     fileName.endsWith(".pdf") ||
     mimeType === "application/pdf" ||
     (input.buffer && isPdfBuffer(input.buffer))
   ) {
-    throw new Error(vi.parsing.pdfNotSupported);
+    if (!input.buffer || input.buffer.length === 0) {
+      throw new Error(vi.parsing.emptyContent);
+    }
+
+    const pageCount = countPdfPages(input.buffer);
+    if (pageCount > MAX_PDF_PAGES) {
+      throw new Error(
+        `${vi.parsing.pdfTooManyPagesPrefix} ${pageCount} ${vi.parsing.pdfTooManyPagesSuffix}`
+      );
+    }
+
+    return {
+      text: "",
+      markedText: "",
+      isSpreadsheet: false,
+      isMultimodal: true,
+      mimeType: "application/pdf",
+      pageCount,
+    };
   }
 
-  // Trường hợp dán văn bản trực tiếp
+  // 2. Kiểm tra file Ảnh (.png, .jpg, .jpeg)
+  if (
+    fileName.endsWith(".png") ||
+    fileName.endsWith(".jpg") ||
+    fileName.endsWith(".jpeg") ||
+    mimeType === "image/png" ||
+    mimeType === "image/jpeg" ||
+    (input.buffer && (isPngBuffer(input.buffer) || isJpegBuffer(input.buffer)))
+  ) {
+    if (!input.buffer || input.buffer.length === 0) {
+      throw new Error(vi.parsing.emptyContent);
+    }
+
+    const detectedMime =
+      fileName.endsWith(".png") ||
+      mimeType === "image/png" ||
+      isPngBuffer(input.buffer)
+        ? "image/png"
+        : "image/jpeg";
+
+    return {
+      text: "",
+      markedText: "",
+      isSpreadsheet: false,
+      isMultimodal: true,
+      mimeType: detectedMime,
+      pageCount: 1,
+    };
+  }
+
+  // 3. Trường hợp dán văn bản trực tiếp
   if (typeof input.text === "string" && !input.buffer) {
     const cleaned = normalizeText(input.text);
     return {
@@ -39,7 +90,7 @@ export async function extractText(
     throw new Error(vi.parsing.emptyContent);
   }
 
-  // 1. File Word (.docx)
+  // 4. File Word (.docx)
   if (
     fileName.endsWith(".docx") ||
     mimeType ===
@@ -48,7 +99,7 @@ export async function extractText(
     return extractFromDocx(input.buffer);
   }
 
-  // 2. File Bảng tính (.xlsx, .csv)
+  // 5. File Bảng tính (.xlsx, .csv)
   if (
     fileName.endsWith(".xlsx") ||
     fileName.endsWith(".csv") ||
@@ -64,7 +115,7 @@ export async function extractText(
     return extractFromSpreadsheet(input.buffer, isCsv);
   }
 
-  // 3. File văn bản thuần (.txt)
+  // 6. File văn bản thuần (.txt)
   if (fileName.endsWith(".txt") || mimeType === "text/plain" || !fileName) {
     const raw = input.buffer.toString("utf-8");
     const cleaned = normalizeText(raw);
@@ -78,8 +129,41 @@ export async function extractText(
   throw new Error(vi.parsing.unsupportedFileType);
 }
 
-function isPdfBuffer(buffer: Buffer): boolean {
-  return buffer.length >= 4 && buffer.subarray(0, 4).toString("ascii") === "%PDF";
+export function isPdfBuffer(buffer: Buffer): boolean {
+  return (
+    buffer.length >= 4 && buffer.subarray(0, 4).toString("ascii") === "%PDF"
+  );
+}
+
+export function isPngBuffer(buffer: Buffer): boolean {
+  return (
+    buffer.length >= 4 &&
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47
+  );
+}
+
+export function isJpegBuffer(buffer: Buffer): boolean {
+  return (
+    buffer.length >= 3 &&
+    buffer[0] === 0xff &&
+    buffer[1] === 0xd8 &&
+    buffer[2] === 0xff
+  );
+}
+
+/**
+ * Đếm số trang của file PDF từ cấu trúc từ điển trang (/Type /Page, không tính /Pages).
+ */
+export function countPdfPages(buffer: Buffer): number {
+  const latin1 = buffer.toString("latin1");
+  const matches = latin1.match(/\/Type\s*\/Page\b(?!s)/g);
+  if (matches && matches.length > 0) {
+    return matches.length;
+  }
+  return 1;
 }
 
 async function extractFromDocx(buffer: Buffer): Promise<ExtractedDocument> {
@@ -94,7 +178,9 @@ async function extractFromDocx(buffer: Buffer): Promise<ExtractedDocument> {
   ]);
 
   const plainText = normalizeText(rawResult.value);
-  const markedText = normalizeText(convertDocxHtmlToMarkedText(htmlResult.value));
+  const markedText = normalizeText(
+    convertDocxHtmlToMarkedText(htmlResult.value)
+  );
 
   return {
     text: plainText,
@@ -108,7 +194,6 @@ function convertDocxHtmlToMarkedText(html: string): string {
     return "";
   }
 
-  // Xử lý bảng HTML: gom các ô <td>/<th> trên cùng 1 hàng <tr> cách nhau bởi dấu tab
   const withTablesProcessed = html.replace(
     /<tr[^>]*>([\s\S]*?)<\/tr>/gi,
     (_match, rowInner: string) => {
@@ -147,7 +232,6 @@ function convertDocxHtmlToMarkedText(html: string): string {
         decodedText
       );
 
-    // Kiểm tra xem chữ cái lựa chọn (A., B., C., D.) hoặc nội dung lựa chọn có được gạch chân / in đậm không
     const hasUnderlineChoice =
       isChoiceLine && /<u\b[^>]*>[\s\S]*?<\/u>/i.test(innerHtml);
     const hasBoldChoice =
@@ -162,7 +246,6 @@ function convertDocxHtmlToMarkedText(html: string): string {
     });
   }
 
-  // Nhóm các lựa chọn theo từng câu hỏi để chỉ gắn [[CORRECT]] khi chỉ 1 lựa chọn có gạch chân hoặc chỉ 1 lựa chọn có in đậm
   let idx = 0;
   while (idx < rawLines.length) {
     if (!rawLines[idx].isChoiceLine) {
@@ -223,20 +306,18 @@ function extractFromSpreadsheet(
   }
 
   const sheet = workbook.Sheets[firstSheetName];
-  const matrix = XLSX.utils.sheet_to_json<Array<string | number | boolean | null>>(
-    sheet,
-    {
-      header: 1,
-      defval: "",
-      blankrows: false,
-    }
-  );
+  const matrix = XLSX.utils.sheet_to_json<
+    Array<string | number | boolean | null>
+  >(sheet, {
+    header: 1,
+    defval: "",
+    blankrows: false,
+  });
 
   if (matrix.length === 0) {
     throw new Error(vi.parsing.emptyContent);
   }
 
-  // Tìm dòng tiêu đề (dòng đầu tiên có ít nhất 2 ô không rỗng)
   let headerRowIdx = 0;
   for (let i = 0; i < Math.min(matrix.length, 5); i++) {
     const nonEmptyCount = (matrix[i] ?? []).filter(

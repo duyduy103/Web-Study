@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { vi } from "@/lib/i18n/vi";
+import { getUserAiQuotaStatus } from "@/lib/ai/quota-and-cache";
 import {
   buildSourcePreview,
   validateAndReadSource,
@@ -54,14 +55,19 @@ export async function POST(request: Request) {
           columnMapping = validated.data;
         }
       } catch {
-        // Bỏ qua nếu JSON mapping không hợp lệ, hệ thống sẽ tự đoán lại
+        // Hệ thống sẽ tự đoán lại cột
       }
     }
 
-    const source = await validateAndReadSource(file, pastedText);
+    const [source, quotaStatus] = await Promise.all([
+      validateAndReadSource(file, pastedText),
+      getUserAiQuotaStatus(supabase, user.id),
+    ]);
+
     const preview = await buildSourcePreview(source, {
       overrideFormat,
       columnMapping,
+      remainingAiQuota: quotaStatus.remainingToday,
     });
 
     return NextResponse.json(preview);
@@ -71,4 +77,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
-

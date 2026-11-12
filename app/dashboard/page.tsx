@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getUserAiQuotaStatus } from "@/lib/ai/quota-and-cache";
 import { logoutAction } from "@/lib/auth/actions";
 import { vi } from "@/lib/i18n/vi";
 import { Button } from "@/components/ui/button";
@@ -23,11 +24,14 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("display_name, role")
-    .eq("id", user.id)
-    .maybeSingle();
+  const [{ data: profile }, quotaStatus] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("display_name, role")
+      .eq("id", user.id)
+      .maybeSingle(),
+    getUserAiQuotaStatus(supabase, user.id),
+  ]);
 
   const metadataName =
     typeof user.user_metadata?.display_name === "string"
@@ -108,6 +112,13 @@ export default async function DashboardPage() {
               {vi.dashboard.greetingPrefix} {displayName}!
             </h1>
             <p className="text-sm text-slate-600">{vi.dashboard.subtitle}</p>
+            <p className="pt-1 text-xs font-medium text-teal-800">
+              {vi.dashboard.aiQuotaRemainingPrefix}{" "}
+              <strong>
+                {quotaStatus.remainingToday}/{quotaStatus.dailyLimit}
+              </strong>{" "}
+              {vi.dashboard.aiQuotaUnit}
+            </p>
           </div>
 
           <CreateSetButton />

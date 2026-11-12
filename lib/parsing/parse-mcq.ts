@@ -155,6 +155,90 @@ function splitIntoQuestionBlocks(text: string): RawQuestionBlock[] {
     blocks.push(current);
   }
 
+  if (blocks.length === 0) {
+    return splitUnnumberedMcqBlocks(lines);
+  }
+
+  return blocks;
+}
+
+function splitUnnumberedMcqBlocks(lines: string[]): RawQuestionBlock[] {
+  const blocks: RawQuestionBlock[] = [];
+  let current: RawQuestionBlock | null = null;
+  let hasSeenChoice = false;
+
+  const docHeaderRegex =
+    /^(?:ĐỀ\s+CƯƠNG|BÀI\s+TẬP|ĐỀ\s+THI|ĐỀ\s+KIỂM\s+TRA|NGÂN\s+HÀNG|PHẦN\b|CHƯƠNG\b)/i;
+
+  for (let idx = 0; idx < lines.length; idx++) {
+    const rawLine = lines[idx].trim();
+    if (!rawLine) {
+      continue;
+    }
+
+    const cleanLine = rawLine.replace(/^\[\[CORRECT\]\]\s*/i, "").trim();
+
+    if (CHOICE_LINE_REGEX.test(rawLine)) {
+      if (!current) {
+        current = {
+          questionNumber: blocks.length + 1,
+          sourceLine: idx + 1,
+          lines: [],
+        };
+      }
+      current.lines.push(rawLine);
+      hasSeenChoice = true;
+      continue;
+    }
+
+    if (INLINE_ANSWER_LINE_REGEX.test(cleanLine)) {
+      if (current) {
+        current.lines.push(rawLine);
+        blocks.push(current);
+        current = null;
+        hasSeenChoice = false;
+      }
+      continue;
+    }
+
+    if (EXPLANATION_LINE_REGEX.test(cleanLine)) {
+      if (current) {
+        current.lines.push(rawLine);
+      } else if (blocks.length > 0) {
+        blocks[blocks.length - 1].lines.push(rawLine);
+      }
+      continue;
+    }
+
+    // Dòng văn bản thường (stem hoặc tiêu đề tài liệu)
+    if (current && hasSeenChoice) {
+      blocks.push(current);
+      current = null;
+      hasSeenChoice = false;
+    }
+
+    if (!current) {
+      current = {
+        questionNumber: blocks.length + 1,
+        sourceLine: idx + 1,
+        lines: [rawLine],
+      };
+    } else if (
+      !hasSeenChoice &&
+      current.lines.length === 1 &&
+      docHeaderRegex.test(current.lines[0])
+    ) {
+      current.sourceLine = idx + 1;
+      current.lines = [rawLine];
+    } else {
+      current.lines.push(rawLine);
+    }
+  }
+
+  if (current && hasSeenChoice) {
+    blocks.push(current);
+  }
+
   return blocks;
 }
 
@@ -259,7 +343,15 @@ function parseSingleBlock(
 
     const ansMatch = cleanLine.match(INLINE_ANSWER_LINE_REGEX);
     if (ansMatch) {
-      explicitAnswerRaw = ansMatch[1].trim();
+      let ansPart = ansMatch[1].trim();
+      const inlineExpMatch = ansPart.match(
+        /^(.+?)\s*[|;]\s*(?:Giải\s*thích|Hướng\s*dẫn(?:\s*giải)?|Lời\s*giải|Ghi\s*chú|Explanation)\s*[:=\-]?\s*(.+)$/i
+      );
+      if (inlineExpMatch) {
+        ansPart = inlineExpMatch[1].trim();
+        explanationParts.push(inlineExpMatch[2].trim());
+      }
+      explicitAnswerRaw = ansPart;
       if (/^(?:>>|=>|->)/.test(cleanLine) || /câu\s*này|đúng\s*là/i.test(cleanLine)) {
         answerLineHadInformalPrefix = true;
       }
@@ -370,7 +462,8 @@ function parseSingleBlock(
       explicitAnswerRaw,
       explanation,
       warnings,
-      sourceRef
+      sourceRef,
+      block.lines.join("\n")
     );
   }
 
@@ -422,6 +515,7 @@ function parseSingleBlock(
     confidence,
     warnings,
     sourceRef,
+    rawBlockText: `Câu ${block.questionNumber}: ${block.lines.join("\n")}`,
   };
 }
 
@@ -430,7 +524,8 @@ function buildNonChoiceQuestionInMcqDoc(
   explicitAnswerRaw: string | null,
   explanation: string | undefined,
   warnings: string[],
-  sourceRef: string
+  sourceRef: string,
+  rawLinesJoined?: string
 ): ParsedQuestion {
   const answerText = explicitAnswerRaw
     ? normalizeInlineWhitespace(explicitAnswerRaw)
@@ -452,5 +547,6 @@ function buildNonChoiceQuestionInMcqDoc(
     confidence: answerText ? 0.45 : 0.25,
     warnings,
     sourceRef,
+    rawBlockText: rawLinesJoined ?? stem,
   };
 }

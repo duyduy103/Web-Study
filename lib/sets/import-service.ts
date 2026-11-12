@@ -10,6 +10,10 @@ import {
   type SpreadsheetColumnMapping,
 } from "@/lib/parsing";
 import { ALLOWED_EXTENSIONS, MAX_FILE_SIZE_BYTES } from "@/lib/sets/schemas";
+import {
+  AI_QUESTION_BATCH_SIZE,
+  PDF_PAGES_PER_BATCH,
+} from "@/lib/ai/tasks";
 
 export interface ValidatedSourceBuffer {
   buffer: Buffer;
@@ -30,8 +34,16 @@ export interface PreviewResponsePayload {
     low: number;
   };
   previewQuestions: ParsedQuestion[];
+  allQuestions: ParsedQuestion[];
+  rawExtractedText: string;
   globalWarnings: string[];
   isSpreadsheet: boolean;
+  isMultimodal: boolean;
+  pageCount?: number;
+  aiSuggested: boolean;
+  estimatedAiCallsWhole: number;
+  estimatedAiCallsFixLow: number;
+  remainingAiQuota: number;
   spreadsheetHeaders?: string[];
   spreadsheetMapping?: SpreadsheetColumnMapping;
 }
@@ -64,10 +76,6 @@ export async function validateAndReadSource(
     }
 
     const lowerName = file.name.toLowerCase();
-    if (lowerName.endsWith(".pdf") || file.type === "application/pdf") {
-      throw new Error(vi.parsing.pdfNotSupported);
-    }
-
     const hasValidExt = ALLOWED_EXTENSIONS.some((ext) =>
       lowerName.endsWith(ext)
     );
@@ -106,6 +114,15 @@ function inferMimeType(lowerName: string): string {
   if (lowerName.endsWith(".docx")) {
     return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
   }
+  if (lowerName.endsWith(".pdf")) {
+    return "application/pdf";
+  }
+  if (lowerName.endsWith(".png")) {
+    return "image/png";
+  }
+  if (lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg")) {
+    return "image/jpeg";
+  }
   if (lowerName.endsWith(".xlsx")) {
     return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
   }
@@ -120,6 +137,7 @@ export async function buildSourcePreview(
   options?: {
     overrideFormat?: DocumentFormat;
     columnMapping?: SpreadsheetColumnMapping;
+    remainingAiQuota?: number;
   }
 ): Promise<PreviewResponsePayload> {
   const extracted = await extractText({
@@ -128,6 +146,32 @@ export async function buildSourcePreview(
     fileName: source.fileName,
     mimeType: source.mimeType,
   });
+
+  const remainingAiQuota = options?.remainingAiQuota ?? 30;
+
+  if (extracted.isMultimodal) {
+    const pageCount = extracted.pageCount ?? 1;
+    const estimatedWhole = Math.max(
+      1,
+      Math.ceil(pageCount / PDF_PAGES_PER_BATCH)
+    );
+    return {
+      detectedFormat: { format: "mcq_inline", confidence: 0.9 },
+      totalQuestions: 0,
+      confidenceCounts: { high: 0, medium: 0, low: 0 },
+      previewQuestions: [],
+      allQuestions: [],
+      rawExtractedText: "",
+      globalWarnings: [],
+      isSpreadsheet: false,
+      isMultimodal: true,
+      pageCount,
+      aiSuggested: true,
+      estimatedAiCallsWhole: estimatedWhole,
+      estimatedAiCallsFixLow: 0,
+      remainingAiQuota,
+    };
+  }
 
   const parsed = parseExtractedDocument(extracted, options);
 
@@ -144,13 +188,30 @@ export async function buildSourcePreview(
     }
   }
 
+  const total = parsed.questions.length;
+  const lowRatio = total > 0 ? low / total : 1;
+  const aiSuggested = total === 0 || lowRatio > 0.3;
+
+  const needsFixCount = medium + low;
+  const estimatedFixLow =
+    needsFixCount > 0
+      ? Math.ceil(needsFixCount / AI_QUESTION_BATCH_SIZE)
+      : 0;
+
   return {
     detectedFormat: parsed.detectedFormat,
-    totalQuestions: parsed.questions.length,
+    totalQuestions: total,
     confidenceCounts: { high, medium, low },
     previewQuestions: parsed.questions.slice(0, 3),
+    allQuestions: parsed.questions,
+    rawExtractedText: extracted.text,
     globalWarnings: parsed.globalWarnings,
     isSpreadsheet: extracted.isSpreadsheet,
+    isMultimodal: false,
+    aiSuggested,
+    estimatedAiCallsWhole: 1,
+    estimatedAiCallsFixLow: estimatedFixLow,
+    remainingAiQuota,
     spreadsheetHeaders: parsed.spreadsheetHeaders,
     spreadsheetMapping: parsed.spreadsheetMapping,
   };
@@ -166,6 +227,7 @@ export async function importQuestionSetToDatabase(params: {
   overrideFormat?: DocumentFormat;
   columnMapping?: SpreadsheetColumnMapping;
   forceDuplicate?: boolean;
+  preParsedQuestions?: ParsedQuestion[];
 }): Promise<ImportSetResult> {
   const {
     supabase,
@@ -177,6 +239,7 @@ export async function importQuestionSetToDatabase(params: {
     overrideFormat,
     columnMapping,
     forceDuplicate,
+    preParsedQuestions,
   } = params;
 
   const fileHash = computeSha256(source.buffer);
@@ -204,7 +267,7 @@ export async function importQuestionSetToDatabase(params: {
     }
   }
 
-  // 2. Tách câu hỏi từ nguồn dữ liệu
+  // 2. Lấy danh sách câu hỏi (từ kết quả AI/xem trước hoặc tách trực tiếp bằng quy tắc)
   const extracted = await extractText({
     buffer: source.textForDirectParse ? undefined : source.buffer,
     text: source.textForDirectParse,
@@ -212,12 +275,15 @@ export async function importQuestionSetToDatabase(params: {
     mimeType: source.mimeType,
   });
 
-  const parsedResult = parseExtractedDocument(extracted, {
-    overrideFormat,
-    columnMapping,
-  });
+  const questionsToSave =
+    preParsedQuestions && preParsedQuestions.length > 0
+      ? preParsedQuestions
+      : parseExtractedDocument(extracted, {
+          overrideFormat,
+          columnMapping,
+        }).questions;
 
-  if (parsedResult.questions.length === 0) {
+  if (questionsToSave.length === 0) {
     throw new Error(vi.importSet.validation.noQuestionsParsed);
   }
 
@@ -225,7 +291,6 @@ export async function importQuestionSetToDatabase(params: {
   let uploadedStoragePath: string | null = null;
 
   try {
-    // 3. Tạo bản ghi question_sets
     const { data: createdSet, error: setError } = await supabase
       .from("question_sets")
       .insert({
@@ -244,7 +309,6 @@ export async function importQuestionSetToDatabase(params: {
 
     createdSetId = createdSet.id;
 
-    // 4. Lưu file gốc lên Supabase Storage bucket 'source-files' và ghi bảng source_files
     const safeFileName = source.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
     const storagePath = `${userId}/${createdSetId}/${Date.now()}_${safeFileName}`;
 
@@ -266,15 +330,14 @@ export async function importQuestionSetToDatabase(params: {
         storage_path: uploadedStoragePath ?? `local://${safeFileName}`,
         file_hash: fileHash,
         mime_type: source.mimeType,
-        page_count: null,
+        page_count: extracted.pageCount ?? null,
       });
 
     if (sourceFileRecordError) {
       throw new Error(sourceFileRecordError.message);
     }
 
-    // 5. Lưu danh sách câu hỏi ở trạng thái 'draft' kèm confidence và warnings
-    for (const q of parsedResult.questions) {
+    for (const q of questionsToSave) {
       const { data: insertedQuestion, error: questionError } = await supabase
         .from("questions")
         .insert({
@@ -288,6 +351,7 @@ export async function importQuestionSetToDatabase(params: {
           confidence: q.confidence,
           status: "draft",
           warnings: q.warnings,
+          ai_generated: Boolean(q.aiGenerated),
         })
         .select("id")
         .single();
@@ -304,6 +368,7 @@ export async function importQuestionSetToDatabase(params: {
           text: c.text,
           is_correct: c.isCorrect,
           position: idx,
+          ai_generated: Boolean(c.aiGenerated ?? q.aiGenerated),
         }));
         const { error: choicesError } = await supabase
           .from("choices")
@@ -330,7 +395,6 @@ export async function importQuestionSetToDatabase(params: {
       setId: createdSetId,
     };
   } catch (err) {
-    // Dọn dẹp (rollback) nếu có lỗi giữa chừng
     if (uploadedStoragePath) {
       await supabase.storage
         .from("source-files")
@@ -342,4 +406,3 @@ export async function importQuestionSetToDatabase(params: {
     throw err;
   }
 }
-
