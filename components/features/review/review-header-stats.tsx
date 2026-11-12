@@ -12,6 +12,7 @@ interface ReviewHeaderStatsProps {
   createdAt: string;
   stats: ReviewSummaryStats;
   onOpenCreateExam: () => void;
+  onOpenPrintExam: () => void;
 }
 
 export function ReviewHeaderStats({
@@ -21,6 +22,7 @@ export function ReviewHeaderStats({
   createdAt,
   stats,
   onOpenCreateExam,
+  onOpenPrintExam,
 }: ReviewHeaderStatsProps) {
   const approvedCount = stats.byStatus.approved;
   const activeTotal = Math.max(1, stats.total - stats.byStatus.archived);
@@ -51,15 +53,26 @@ export function ReviewHeaderStats({
           </p>
         </div>
 
-        <div className="flex flex-col items-stretch gap-2.5 sm:w-80 sm:items-end">
-          <Button
-            type="button"
-            size="sm"
-            onClick={onOpenCreateExam}
-            className="w-full sm:w-auto"
-          >
-            {vi.review.createExamButton}
-          </Button>
+        <div className="flex flex-col items-stretch gap-2.5 sm:w-96 sm:items-end">
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={onOpenPrintExam}
+              className="flex-1 sm:flex-none"
+            >
+              {vi.printExam.openModalButton}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={onOpenCreateExam}
+              className="flex-1 sm:flex-none"
+            >
+              {vi.review.createExamButton}
+            </Button>
+          </div>
 
           <div className="w-full">
             <div className="mb-1.5 flex items-center justify-between text-xs font-semibold">

@@ -15,6 +15,7 @@ export type UserRole = "teacher" | "student";
 export type QuestionType = "mcq" | "true_false" | "cloze" | "short_answer";
 export type QuestionStatus = "draft" | "approved" | "archived";
 export type AttemptStatus = "in_progress" | "submitted" | "expired";
+export type ExamMode = "online" | "print";
 
 export type Database = {
   public: {
@@ -24,18 +25,21 @@ export type Database = {
           id: string;
           role: UserRole;
           display_name: string;
+          default_print_header: Json;
           created_at: string;
         };
         Insert: {
           id: string;
           role?: UserRole;
           display_name: string;
+          default_print_header?: Json;
           created_at?: string;
         };
         Update: {
           id?: string;
           role?: UserRole;
           display_name?: string;
+          default_print_header?: Json;
           created_at?: string;
         };
         Relationships: [];
@@ -276,6 +280,10 @@ export type Database = {
           closes_at: string | null;
           max_attempts: number;
           total_points: number;
+          exam_mode: ExamMode;
+          version_count: number;
+          seed: string;
+          header_info: Json;
           created_at: string;
         };
         Insert: {
@@ -293,6 +301,10 @@ export type Database = {
           closes_at?: string | null;
           max_attempts?: number;
           total_points?: number;
+          exam_mode?: ExamMode;
+          version_count?: number;
+          seed?: string;
+          header_info?: Json;
           created_at?: string;
         };
         Update: {
@@ -310,6 +322,10 @@ export type Database = {
           closes_at?: string | null;
           max_attempts?: number;
           total_points?: number;
+          exam_mode?: ExamMode;
+          version_count?: number;
+          seed?: string;
+          header_info?: Json;
           created_at?: string;
         };
         Relationships: [

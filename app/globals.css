@@ -11,3 +11,32 @@ body {
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 15mm 18mm;
+  }
+
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-family: "Times New Roman", Times, serif !important;
+    font-size: 12pt !important;
+    line-height: 1.45 !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-page-break {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .print-avoid-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+

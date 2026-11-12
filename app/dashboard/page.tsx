@@ -44,7 +44,7 @@ export default async function DashboardPage() {
     emailPrefix ||
     vi.dashboard.defaultTeacherName;
 
-  const [{ data: questionSets, error: setsError }, { data: examsData }] =
+  const [{ data: questionSets, error: setsError }, { data: examsDataRaw }] =
     await Promise.all([
       supabase
         .from("question_sets")
@@ -53,14 +53,31 @@ export default async function DashboardPage() {
         .order("created_at", { ascending: false }),
       supabase
         .from("exams")
-        .select("id, title, code, duration_min, is_open, created_at")
+        .select(
+          "id, title, code, duration_min, is_open, exam_mode, version_count, created_at"
+        )
         .eq("owner_id", user.id)
         .order("created_at", { ascending: false }),
     ]);
 
+  let examsData = examsDataRaw ?? [];
+  if (!examsDataRaw) {
+    const { data: fallbackExams } = await supabase
+      .from("exams")
+      .select("id, title, code, duration_min, is_open, created_at")
+      .eq("owner_id", user.id)
+      .order("created_at", { ascending: false });
+    examsData = (fallbackExams ?? []).map((e) => ({
+      ...e,
+      exam_mode: "online" as const,
+      version_count: 1,
+    }));
+  }
+
   const sets = questionSets ?? [];
   const setIds = sets.map((s) => s.id);
-  const exams = examsData ?? [];
+  const exams = examsData.filter((e) => e.exam_mode !== "print");
+  const printExams = examsData.filter((e) => e.exam_mode === "print");
   const examIds = exams.map((e) => e.id);
 
   const attemptStatsByExamId = new Map<
@@ -362,6 +379,60 @@ export default async function DashboardPage() {
                   </Link>
                 );
               })}
+            </div>
+          </section>
+        ) : null}
+
+        {printExams.length > 0 ? (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">
+                {vi.printExam.savedPrintExamsTitle}
+              </h2>
+              <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-900">
+                {printExams.length} {vi.dashboard.examsCountUnit}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {printExams.map((pExam) => (
+                <Link
+                  key={pExam.id}
+                  href={`/dashboard/print/${pExam.id}`}
+                  className="block rounded-2xl focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-none"
+                >
+                  <Card className="h-full transition-shadow hover:border-amber-400 hover:shadow-md">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <CardTitle className="line-clamp-2 text-base">
+                          🖨️ {pExam.title}
+                        </CardTitle>
+                        <span className="shrink-0 rounded-full bg-amber-100 px-2.5 py-0.5 font-mono text-[11px] font-bold text-amber-950">
+                          {pExam.version_count ?? 1}{" "}
+                          {vi.printExam.versionCountBadgeSuffix}
+                        </span>
+                      </div>
+                      <CardDescription>
+                        {pExam.duration_min
+                          ? `${pExam.duration_min} ${vi.dashboard.examCard.durationUnit}`
+                          : vi.dashboard.examCard.noDurationLimit}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between text-xs text-slate-500">
+                        <span>
+                          {new Date(pExam.created_at).toLocaleDateString(
+                            "vi-VN"
+                          )}
+                        </span>
+                        <span className="font-semibold text-teal-700">
+                          {vi.printExam.openPrintViewButton}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
             </div>
           </section>
         ) : null}

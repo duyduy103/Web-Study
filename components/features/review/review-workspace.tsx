@@ -45,7 +45,11 @@ import {
   DistractorGeneratorPanel,
   type ShortAnswerQuestionCandidate,
 } from "@/components/features/sets/distractor-generator-panel";
-import { CreateExamModal } from "@/components/features/exams/create-exam-modal";
+import {
+  CreateExamModal,
+  CreatePrintExamModal,
+} from "@/components/features/exams/create-exam-modal";
+import type { PrintExamHeaderInfo } from "@/lib/export/types";
 import { TeacherStudyPanel } from "@/components/features/study/teacher-study-panel";
 
 const PAGE_SIZE = 25;
@@ -60,6 +64,7 @@ interface ReviewWorkspaceProps {
   initialRemainingAiQuota: number;
   initialStudyEnabled?: boolean;
   initialStudyCode?: string | null;
+  defaultPrintHeader?: Partial<PrintExamHeaderInfo> | null;
 }
 
 export function ReviewWorkspace({
@@ -72,6 +77,7 @@ export function ReviewWorkspace({
   initialRemainingAiQuota,
   initialStudyEnabled = false,
   initialStudyCode = null,
+  defaultPrintHeader = null,
 }: ReviewWorkspaceProps) {
   const storageKey = `memoquiz_review_undo_${setId}`;
   const [activeTab, setActiveTab] = React.useState<"questions" | "study_stats">(
@@ -107,6 +113,7 @@ export function ReviewWorkspace({
   const [manualBulkModalOpen, setManualBulkModalOpen] = React.useState(false);
   const [shortcutsModalOpen, setShortcutsModalOpen] = React.useState(false);
   const [createExamModalOpen, setCreateExamModalOpen] = React.useState(false);
+  const [printExamModalOpen, setPrintExamModalOpen] = React.useState(false);
 
   // Đồng bộ khi initialQuestions thay đổi (ví dụ sau khi chạy AI sinh đáp án nhiễu)
   React.useEffect(() => {
@@ -811,6 +818,7 @@ export function ReviewWorkspace({
         createdAt={createdAt}
         stats={stats}
         onOpenCreateExam={() => setCreateExamModalOpen(true)}
+        onOpenPrintExam={() => setPrintExamModalOpen(true)}
       />
 
       <TeacherStudyPanel
@@ -1063,6 +1071,17 @@ export function ReviewWorkspace({
         setTitle={title}
         questions={questions}
         onClose={() => setCreateExamModalOpen(false)}
+      />
+
+      <CreatePrintExamModal
+        open={printExamModalOpen}
+        setId={setId}
+        setTitle={title}
+        setSubject={subject}
+        setGrade={grade}
+        defaultPrintHeader={defaultPrintHeader}
+        questions={questions}
+        onClose={() => setPrintExamModalOpen(false)}
       />
     </div>
   );
