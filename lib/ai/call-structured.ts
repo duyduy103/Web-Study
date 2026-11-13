@@ -163,7 +163,11 @@ export async function callGeminiStructured<TOutput>(
   }
 
   // 2. Kiểm tra và trừ hạn mức nguyên tử trước khi gọi AI
-  const quotaResult = await consumeUserAiQuotaOrThrow(options.supabase);
+  const quotaResult = await consumeUserAiQuotaOrThrow(
+    options.supabase,
+    undefined,
+    options.userId
+  );
 
   const maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;

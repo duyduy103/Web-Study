@@ -32,7 +32,27 @@ interface QuestionSummaryItem {
   difficulty: string | null;
 }
 
-export function StudySetOverviewClient({ code }: { code: string }) {
+export function StudySetOverviewClient({
+  code,
+  accountMode = false,
+  displayName,
+}: {
+  code: string;
+  accountMode?: boolean;
+  displayName?: string;
+}) {
+  if (accountMode) {
+    return (
+      <StudySetOverviewInner
+        code={code}
+        learnerSecret=""
+        nickname={displayName ?? "Người học"}
+        accountMode={true}
+        resetLearnerSession={() => {}}
+      />
+    );
+  }
+
   return (
     <LearnerOnboardingGate>
       {({ learnerSecret, nickname, resetLearnerSession }) => (
@@ -40,6 +60,7 @@ export function StudySetOverviewClient({ code }: { code: string }) {
           code={code}
           learnerSecret={learnerSecret}
           nickname={nickname}
+          accountMode={false}
           resetLearnerSession={resetLearnerSession}
         />
       )}
@@ -51,13 +72,21 @@ function StudySetOverviewInner({
   code,
   learnerSecret,
   nickname,
+  accountMode,
   resetLearnerSession,
 }: {
   code: string;
   learnerSecret: string;
   nickname: string;
+  accountMode: boolean;
   resetLearnerSession: () => void;
 }) {
+  const studyApiUrl = accountMode ? "/api/account/study" : "/api/public/study";
+  const backHref = accountMode ? `/dashboard/sets/${encodeURIComponent(code)}` : "/study";
+  const backLabel = accountMode ? vi.studentSet.backToSet : vi.study.overview.backToHub;
+  const reviewBaseHref = accountMode
+    ? `/dashboard/sets/${encodeURIComponent(code)}/study/review`
+    : `/study/${encodeURIComponent(code)}/review`;
   const [setInfo, setSetInfo] = React.useState<StudySetInfo | null>(null);
   const [questions, setQuestions] = React.useState<QuestionSummaryItem[]>([]);
   const [cardStates, setCardStates] = React.useState<SrsCardStateRecord[]>([]);
@@ -80,12 +109,12 @@ function StudySetOverviewInner({
     setIsDisabled(false);
 
     try {
-      const res = await fetch("/api/public/study", {
+      const res = await fetch(studyApiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "load_overview",
-          learnerSecret,
+          ...(accountMode ? {} : { learnerSecret }),
           code,
         }),
       });
@@ -130,7 +159,7 @@ function StudySetOverviewInner({
     } finally {
       setIsLoading(false);
     }
-  }, [code, learnerSecret, resetLearnerSession]);
+  }, [code, learnerSecret, accountMode, studyApiUrl, resetLearnerSession]);
 
   React.useEffect(() => {
     void loadData();
@@ -145,12 +174,12 @@ function StudySetOverviewInner({
     try {
       const clampedLimit = Math.max(5, Math.min(50, dailyNewLimit));
       const clampedLeech = Math.max(2, Math.min(10, leechThreshold));
-      const res = await fetch("/api/public/study", {
+      const res = await fetch(studyApiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "update_settings",
-          learnerSecret,
+          ...(accountMode ? {} : { learnerSecret }),
           setId: setInfo.id,
           dailyNewLimit: clampedLimit,
           leechThreshold: clampedLeech,
@@ -189,10 +218,10 @@ function StudySetOverviewInner({
           </p>
           <div className="mt-6">
             <Link
-              href="/study"
+              href={backHref}
               className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-teal-700"
             >
-              {vi.study.overview.backToHub}
+              {backLabel}
             </Link>
           </div>
         </div>
@@ -227,10 +256,10 @@ function StudySetOverviewInner({
     <div className="mx-auto max-w-4xl space-y-6 px-4 py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
-          href="/study"
+          href={backHref}
           className="inline-flex min-h-[44px] items-center text-sm font-semibold text-teal-700 hover:underline"
         >
-          {vi.study.overview.backToHub}
+          {backLabel}
         </Link>
         <span className="text-xs font-medium text-slate-600">
           Học sinh: <strong className="text-slate-900">{nickname}</strong>
@@ -322,7 +351,7 @@ function StudySetOverviewInner({
         <div className="mt-6 flex flex-wrap items-center gap-3">
           {totalToStudyNow > 0 ? (
             <Link
-              href={`/study/${encodeURIComponent(setInfo.study_code)}/review`}
+              href={reviewBaseHref}
               className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-2xl bg-teal-600 px-6 py-3 text-base font-bold text-white shadow-sm transition-colors hover:bg-teal-700 sm:flex-none"
             >
               {vi.study.overview.startReviewButton} ({totalToStudyNow}{" "}
@@ -336,7 +365,7 @@ function StudySetOverviewInner({
 
           {leechItems.length > 0 ? (
             <Link
-              href={`/study/${encodeURIComponent(setInfo.study_code)}/review?mode=leech`}
+              href={`${reviewBaseHref}?mode=leech`}
               className="inline-flex min-h-[48px] items-center justify-center rounded-2xl border border-rose-300 bg-rose-50 px-5 py-3 text-sm font-bold text-rose-900 transition-colors hover:bg-rose-100"
             >
               🎯 {vi.study.overview.studyExtraLeechButton} ({leechItems.length})
@@ -444,7 +473,7 @@ function StudySetOverviewInner({
           </div>
           {leechItems.length > 0 ? (
             <Link
-              href={`/study/${encodeURIComponent(setInfo.study_code)}/review?mode=leech`}
+              href={`${reviewBaseHref}?mode=leech`}
               className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white hover:bg-rose-700"
             >
               {vi.study.overview.studyExtraLeechButton}

@@ -25,11 +25,11 @@ Một web app cho phép giáo viên **nạp đề cương/tài liệu có sẵn 
 | Persona | Mô tả | Nhu cầu chính |
 |---|---|---|
 | **Giáo viên** (chính) | Dạy tiểu học đến THPT, có đề cương Word/PDF/Excel. Không rành công nghệ | Tạo đề nhanh, không nhập tay đáp án, xuất đề in, giao bài |
-| **Học sinh lớn** (THCS, THPT) | Ôn thi, tự học | Ôn hiệu quả, biết hôm nay cần ôn gì, thấy tiến bộ |
-| **Học sinh nhỏ** (tiểu học) | 6-11 tuổi | Học qua game, giao diện to rõ, có thưởng |
+| **Học sinh lớn / Tự học** (THCS, THPT, SV) | Ôn thi, tự học (có tài khoản hoặc vào bằng mã) | Tự nạp tài liệu, duyệt, ôn tập FSRS, tự làm bài kiểm tra, xem lịch sử cá nhân |
+| **Học sinh nhỏ** (tiểu học) | 6-11 tuổi (chưa đủ 16 tuổi dùng mã lớp/biệt danh ẩn danh) | Học qua game, giao diện to rõ, có thưởng |
 | **Phụ huynh** (phụ) | Theo dõi con | Xem tiến độ (giai đoạn sau) |
 
-Giáo viên cũng có thể tự dùng như học sinh (tự ôn thi, sinh viên). Người dùng tự học không cần lớp.
+Giáo viên cũng có thể tự dùng như học sinh (tự ôn thi, sinh viên). Học sinh từ đủ 16 tuổi (hoặc có sự đồng ý của phụ huynh) có thể đăng ký tài khoản riêng (`role = 'student'`) để lưu ngân hàng câu hỏi và lịch ôn FSRS của chính mình, gộp từ hồ sơ ẩn danh cũ bằng mã khôi phục, nhưng không có quyền giao bài cho người khác hay xuất đề in nhiều mã.
 
 ---
 
@@ -143,9 +143,9 @@ Hỗ trợ **dán thẳng từ Word/Excel** vào ô văn bản. Có **tải file
 ### F3. Tạo đề kiểm tra và xuất đề (GĐ1)
 
 - Chọn câu từ ngân hàng theo chủ đề/độ khó/ngẫu nhiên, đặt số câu, điểm mỗi câu.
-- **Trộn thứ tự câu và đáp án** để tạo nhiều mã đề (ví dụ 4 mã: 101, 102, 103, 104).
-- Xuất **Word (.docx)** và **PDF** để in: đề, phiếu đáp án, đáp án theo từng mã đề.
-- Làm bài online: giao link, học sinh làm, chấm tự động (trắc nghiệm, đúng/sai, điền khuyết). Tự luận ngắn được AI hỗ trợ chấm theo đáp án mẫu, giáo viên có thể sửa điểm.
+- **Trộn thứ tự câu và đáp án** để tạo nhiều mã đề (ví dụ 4 mã: 101, 102, 103, 104) — chỉ dành cho tài khoản Giáo viên.
+- Xuất **Word (.docx)** và **PDF** để in: đề, phiếu đáp án, đáp án theo từng mã đề — chỉ dành cho Giáo viên.
+- Làm bài online: giáo viên giao link/mã cho lớp; học sinh có tài khoản có thể **tự làm bài kiểm tra cá nhân** trên bộ câu hỏi của mình (không có mã công khai).
 - Hiển thị kết quả: điểm, câu sai, thống kê theo câu (câu nào nhiều bạn sai nhất).
 
 ---
@@ -343,8 +343,8 @@ Mọi bảng dữ liệu người dùng bật **Row Level Security**: người d
 | File đề cương lộn xộn, tách sai | Cao | Màn hình duyệt có cờ tin cậy; bộ file mẫu thật để test; cho ánh xạ thủ công |
 | AI bịa đáp án | Cao | Bắt buộc `source_ref`; trạng thái nháp; giáo viên duyệt |
 | PDF scan, chữ mờ | Trung bình | Dùng model đọc ảnh; cảnh báo khi chất lượng thấp |
-| Chi phí AI tăng | Trung bình | Quy tắc trước, cache, theo lô, hạn mức |
-| Dữ liệu trẻ em | Cao | Tối thiểu dữ liệu, tài khoản qua lớp, RLS, không quảng cáo |
+| Chi phí AI tăng | Trung bình | Quy tắc trước, cache, theo lô, hạn mức theo vai trò (GV/HS) và hạn mức tổng toàn hệ thống |
+| Dữ liệu trẻ em | Cao | Tối thiểu dữ liệu, trẻ <16 tuổi dùng mã/biệt danh ẩn danh, xác nhận độ tuổi/phụ huynh khi đăng ký, RLS, không quảng cáo, cho phép xóa tài khoản & dữ liệu |
 | Phạm vi quá rộng | Cao | Làm theo giai đoạn; chỉ GĐ1 trước, dùng được rồi mới sang tiếp |
 | Bản quyền tài liệu giáo viên nạp | Trung bình | Dữ liệu riêng tư theo mặc định; điều khoản sử dụng rõ ràng |
 

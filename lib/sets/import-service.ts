@@ -342,6 +342,7 @@ export async function importQuestionSetToDatabase(params: {
         file_hash: fileHash,
         mime_type: source.mimeType,
         page_count: extracted.pageCount ?? null,
+        file_size_bytes: uploadedStoragePath ? source.buffer.byteLength : 0,
       });
 
     if (sourceFileRecordError) {

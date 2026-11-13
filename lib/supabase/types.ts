@@ -15,7 +15,7 @@ export type UserRole = "teacher" | "student";
 export type QuestionType = "mcq" | "true_false" | "cloze" | "short_answer";
 export type QuestionStatus = "draft" | "approved" | "archived";
 export type AttemptStatus = "in_progress" | "submitted" | "expired";
-export type ExamMode = "online" | "print";
+export type ExamMode = "online" | "print" | "self";
 
 export type Database = {
   public: {
@@ -26,6 +26,7 @@ export type Database = {
           role: UserRole;
           display_name: string;
           default_print_header: Json;
+          consented_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -33,6 +34,7 @@ export type Database = {
           role?: UserRole;
           display_name: string;
           default_print_header?: Json;
+          consented_at?: string | null;
           created_at?: string;
         };
         Update: {
@@ -40,6 +42,7 @@ export type Database = {
           role?: UserRole;
           display_name?: string;
           default_print_header?: Json;
+          consented_at?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -96,6 +99,7 @@ export type Database = {
           file_hash: string;
           mime_type: string;
           page_count: number | null;
+          file_size_bytes: number;
           created_at: string;
         };
         Insert: {
@@ -105,6 +109,7 @@ export type Database = {
           file_hash: string;
           mime_type: string;
           page_count?: number | null;
+          file_size_bytes?: number;
           created_at?: string;
         };
         Update: {
@@ -114,6 +119,7 @@ export type Database = {
           file_hash?: string;
           mime_type?: string;
           page_count?: number | null;
+          file_size_bytes?: number;
           created_at?: string;
         };
         Relationships: [
@@ -643,6 +649,7 @@ export type Database = {
           nickname: string;
           secret_hash: string;
           recovery_code_hash: string;
+          user_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -650,6 +657,7 @@ export type Database = {
           nickname: string;
           secret_hash: string;
           recovery_code_hash: string;
+          user_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -657,7 +665,29 @@ export type Database = {
           nickname?: string;
           secret_hash?: string;
           recovery_code_hash?: string;
+          user_id?: string | null;
           created_at?: string;
+        };
+        Relationships: [];
+      };
+      ai_global_usage: {
+        Row: {
+          date: string;
+          calls: number;
+          tokens: number;
+          updated_at: string;
+        };
+        Insert: {
+          date?: string;
+          calls?: number;
+          tokens?: number;
+          updated_at?: string;
+        };
+        Update: {
+          date?: string;
+          calls?: number;
+          tokens?: number;
+          updated_at?: string;
         };
         Relationships: [];
       };
@@ -951,6 +981,36 @@ export type Database = {
           p_secret_hash: string;
         };
         Returns: undefined;
+      };
+      is_teacher: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
+      ensure_account_learner: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      get_account_study_summary: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      merge_anonymous_learner: {
+        Args: {
+          p_recovery_code_hash: string;
+        };
+        Returns: Json;
+      };
+      consume_ai_quota_v2: {
+        Args: {
+          p_user_limit?: number;
+          p_global_limit?: number;
+          p_tokens?: number;
+        };
+        Returns: Json;
+      };
+      delete_my_account: {
+        Args: Record<string, never>;
+        Returns: Json;
       };
     };
     Enums: {

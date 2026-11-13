@@ -89,7 +89,7 @@ function createMockSupabase(initial?: Partial<MockSupabaseState>): {
   };
 
   const mockRpc = async (fnName: string) => {
-    if (fnName === "consume_ai_quota") {
+    if (fnName === "consume_ai_quota" || fnName === "consume_ai_quota_v2") {
       state.rpcConsumeCalls += 1;
       if (!state.quotaAllowed) {
         return {

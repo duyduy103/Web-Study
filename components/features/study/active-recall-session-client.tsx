@@ -54,10 +54,24 @@ interface LastRatedSnapshot {
 export function ActiveRecallSessionClient({
   code,
   leechOnly,
+  accountMode = false,
 }: {
   code: string;
   leechOnly: boolean;
+  accountMode?: boolean;
 }) {
+  if (accountMode) {
+    return (
+      <ActiveRecallInner
+        code={code}
+        leechOnly={leechOnly}
+        learnerSecret=""
+        accountMode={true}
+        resetLearnerSession={() => {}}
+      />
+    );
+  }
+
   return (
     <LearnerOnboardingGate>
       {({ learnerSecret, resetLearnerSession }) => (
@@ -65,6 +79,7 @@ export function ActiveRecallSessionClient({
           code={code}
           leechOnly={leechOnly}
           learnerSecret={learnerSecret}
+          accountMode={false}
           resetLearnerSession={resetLearnerSession}
         />
       )}
@@ -76,13 +91,19 @@ function ActiveRecallInner({
   code,
   leechOnly,
   learnerSecret,
+  accountMode,
   resetLearnerSession,
 }: {
   code: string;
   leechOnly: boolean;
   learnerSecret: string;
+  accountMode: boolean;
   resetLearnerSession: () => void;
 }) {
+  const studyApiUrl = accountMode ? "/api/account/study" : "/api/public/study";
+  const overviewHref = accountMode
+    ? `/dashboard/sets/${encodeURIComponent(code)}/study`
+    : `/study/${encodeURIComponent(code)}`;
   const [setTitle, setSetTitle] = React.useState("");
   const [questionsById, setQuestionsById] = React.useState<
     Record<string, StudyQuestionItem>
@@ -137,12 +158,12 @@ function ActiveRecallInner({
       setIsLoading(true);
       setErrorMsg(null);
       try {
-        const res = await fetch("/api/public/study", {
+        const res = await fetch(studyApiUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: "load_overview",
-            learnerSecret,
+            ...(accountMode ? {} : { learnerSecret }),
             code,
             leechOnly,
           }),
@@ -205,7 +226,14 @@ function ActiveRecallInner({
     return () => {
       active = false;
     };
-  }, [code, leechOnly, learnerSecret, resetLearnerSession]);
+  }, [
+    code,
+    leechOnly,
+    learnerSecret,
+    accountMode,
+    studyApiUrl,
+    resetLearnerSession,
+  ]);
 
   const currentQuestionId = queueIds[currentIndex] ?? null;
   const currentQuestion = currentQuestionId
@@ -223,12 +251,12 @@ function ActiveRecallInner({
     if (!currentQuestion || isLoadingHint || choicesHint) return;
     setIsLoadingHint(true);
     try {
-      const res = await fetch("/api/public/study", {
+      const res = await fetch(studyApiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "reveal_choices_hint",
-          learnerSecret,
+          ...(accountMode ? {} : { learnerSecret }),
           code,
           questionId: currentQuestion.id,
         }),
@@ -247,12 +275,12 @@ function ActiveRecallInner({
     if (!currentQuestion || isRevealingAnswer || revealedAnswer) return;
     setIsRevealingAnswer(true);
     try {
-      const res = await fetch("/api/public/study", {
+      const res = await fetch(studyApiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "reveal_answer",
-          learnerSecret,
+          ...(accountMode ? {} : { learnerSecret }),
           code,
           questionId: currentQuestion.id,
         }),
@@ -273,12 +301,12 @@ function ActiveRecallInner({
 
     try {
       const currentCardState = cardStatesById[currentQuestion.id] ?? null;
-      const res = await fetch("/api/public/study", {
+      const res = await fetch(studyApiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "rate_card",
-          learnerSecret,
+          ...(accountMode ? {} : { learnerSecret }),
           code,
           questionId: currentQuestion.id,
           button,
@@ -345,12 +373,12 @@ function ActiveRecallInner({
     setIsUndoing(true);
 
     try {
-      const res = await fetch("/api/public/study", {
+      const res = await fetch(studyApiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "undo_rate",
-          learnerSecret,
+          ...(accountMode ? {} : { learnerSecret }),
           reviewLogId: lastRated.reviewLogId,
           questionId: lastRated.questionId,
           previousCardState: lastRated.previousCardState,
@@ -399,7 +427,7 @@ function ActiveRecallInner({
           <p className="text-sm font-medium text-red-700">{errorMsg}</p>
           <div className="mt-4">
             <Link
-              href={`/study/${encodeURIComponent(code)}`}
+              href={overviewHref}
               className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-teal-600 px-5 py-2 text-sm font-bold text-white"
             >
               {vi.study.review.backToOverview}
@@ -491,7 +519,7 @@ function ActiveRecallInner({
               </Button>
             ) : null}
             <Link
-              href={`/study/${encodeURIComponent(code)}`}
+              href={overviewHref}
               className="inline-flex min-h-[48px] items-center justify-center rounded-2xl bg-teal-600 px-6 py-3 text-base font-bold text-white hover:bg-teal-700"
             >
               {vi.study.review.summary.backToSetOverviewButton}
@@ -513,7 +541,7 @@ function ActiveRecallInner({
       {/* Thanh điều hướng trên cùng */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
-          href={`/study/${encodeURIComponent(code)}`}
+          href={overviewHref}
           className="inline-flex min-h-[44px] items-center text-sm font-semibold text-teal-700 hover:underline"
         >
           {vi.study.review.backToOverview}

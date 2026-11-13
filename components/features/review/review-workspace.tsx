@@ -48,14 +48,17 @@ import {
 import {
   CreateExamModal,
   CreatePrintExamModal,
+  CreateSelfQuizModal,
 } from "@/components/features/exams/create-exam-modal";
 import type { PrintExamHeaderInfo } from "@/lib/export/types";
+import type { UserRole } from "@/lib/supabase/types";
 import { TeacherStudyPanel } from "@/components/features/study/teacher-study-panel";
 
 const PAGE_SIZE = 25;
 
 interface ReviewWorkspaceProps {
   setId: string;
+  userRole?: UserRole;
   title: string;
   subject: string | null;
   grade: string | null;
@@ -69,6 +72,7 @@ interface ReviewWorkspaceProps {
 
 export function ReviewWorkspace({
   setId,
+  userRole = "teacher",
   title,
   subject,
   grade,
@@ -114,6 +118,7 @@ export function ReviewWorkspace({
   const [shortcutsModalOpen, setShortcutsModalOpen] = React.useState(false);
   const [createExamModalOpen, setCreateExamModalOpen] = React.useState(false);
   const [printExamModalOpen, setPrintExamModalOpen] = React.useState(false);
+  const [selfQuizModalOpen, setSelfQuizModalOpen] = React.useState(false);
 
   // Đồng bộ khi initialQuestions thay đổi (ví dụ sau khi chạy AI sinh đáp án nhiễu)
   React.useEffect(() => {
@@ -812,6 +817,8 @@ export function ReviewWorkspace({
   return (
     <div className="space-y-5 pb-16">
       <ReviewHeaderStats
+        setId={setId}
+        userRole={userRole}
         title={title}
         subject={subject}
         grade={grade}
@@ -819,15 +826,18 @@ export function ReviewWorkspace({
         stats={stats}
         onOpenCreateExam={() => setCreateExamModalOpen(true)}
         onOpenPrintExam={() => setPrintExamModalOpen(true)}
+        onOpenSelfQuiz={() => setSelfQuizModalOpen(true)}
       />
 
-      <TeacherStudyPanel
-        setId={setId}
-        initialStudyEnabled={initialStudyEnabled}
-        initialStudyCode={initialStudyCode}
-        activeTab={activeTab}
-        onChangeTab={setActiveTab}
-      />
+      {userRole === "teacher" ? (
+        <TeacherStudyPanel
+          setId={setId}
+          initialStudyEnabled={initialStudyEnabled}
+          initialStudyCode={initialStudyCode}
+          activeTab={activeTab}
+          onChangeTab={setActiveTab}
+        />
+      ) : null}
 
       {activeTab === "questions" ? (
         <>
@@ -1065,24 +1075,36 @@ export function ReviewWorkspace({
         onClose={() => setShortcutsModalOpen(false)}
       />
 
-      <CreateExamModal
-        open={createExamModalOpen}
-        setId={setId}
-        setTitle={title}
-        questions={questions}
-        onClose={() => setCreateExamModalOpen(false)}
-      />
+      {userRole === "teacher" ? (
+        <>
+          <CreateExamModal
+            open={createExamModalOpen}
+            setId={setId}
+            setTitle={title}
+            questions={questions}
+            onClose={() => setCreateExamModalOpen(false)}
+          />
 
-      <CreatePrintExamModal
-        open={printExamModalOpen}
-        setId={setId}
-        setTitle={title}
-        setSubject={subject}
-        setGrade={grade}
-        defaultPrintHeader={defaultPrintHeader}
-        questions={questions}
-        onClose={() => setPrintExamModalOpen(false)}
-      />
+          <CreatePrintExamModal
+            open={printExamModalOpen}
+            setId={setId}
+            setTitle={title}
+            setSubject={subject}
+            setGrade={grade}
+            defaultPrintHeader={defaultPrintHeader}
+            questions={questions}
+            onClose={() => setPrintExamModalOpen(false)}
+          />
+        </>
+      ) : (
+        <CreateSelfQuizModal
+          open={selfQuizModalOpen}
+          setId={setId}
+          setTitle={title}
+          questions={questions}
+          onClose={() => setSelfQuizModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

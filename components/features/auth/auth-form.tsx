@@ -2,7 +2,11 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { loginAction, signupAction, type AuthActionState } from "@/lib/auth/actions";
+import {
+  loginAction,
+  signupAction,
+  type AuthActionState,
+} from "@/lib/auth/actions";
 import { loginSchema, signupSchema } from "@/lib/auth/schemas";
 import { vi } from "@/lib/i18n/vi";
 import { Button } from "@/components/ui/button";
@@ -34,14 +38,24 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [clientErrors, setClientErrors] = React.useState<
     AuthActionState["fieldErrors"]
   >({});
+  const [selectedRole, setSelectedRole] = React.useState<"student" | "teacher">(
+    "student"
+  );
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     const formData = new FormData(event.currentTarget);
-    const rawData: unknown = {
-      displayName: formData.get("displayName") ?? "",
-      email: formData.get("email") ?? "",
-      password: formData.get("password") ?? "",
-    };
+    const rawData: unknown = isLogin
+      ? {
+          email: formData.get("email") ?? "",
+          password: formData.get("password") ?? "",
+        }
+      : {
+          role: formData.get("role") ?? "",
+          displayName: formData.get("displayName") ?? "",
+          email: formData.get("email") ?? "",
+          password: formData.get("password") ?? "",
+          consentAccepted: formData.get("consentAccepted") === "on",
+        };
 
     const schema = isLogin ? loginSchema : signupSchema;
     const parsed = schema.safeParse(rawData);
@@ -53,9 +67,11 @@ export function AuthForm({ mode }: AuthFormProps) {
         string[] | undefined
       >;
       setClientErrors({
+        role: flattened.role?.[0],
         displayName: flattened.displayName?.[0],
         email: flattened.email?.[0],
         password: flattened.password?.[0],
+        consentAccepted: flattened.consentAccepted?.[0],
       });
       return;
     }
@@ -63,10 +79,13 @@ export function AuthForm({ mode }: AuthFormProps) {
     setClientErrors({});
   }
 
+  const roleError = clientErrors?.role ?? state.fieldErrors?.role;
   const displayNameError =
     clientErrors?.displayName ?? state.fieldErrors?.displayName;
   const emailError = clientErrors?.email ?? state.fieldErrors?.email;
   const passwordError = clientErrors?.password ?? state.fieldErrors?.password;
+  const consentError =
+    clientErrors?.consentAccepted ?? state.fieldErrors?.consentAccepted;
 
   return (
     <Card className="w-full max-w-md border-slate-200/90 shadow-sm">
@@ -74,7 +93,13 @@ export function AuthForm({ mode }: AuthFormProps) {
         <div className="mx-auto inline-flex items-center gap-2 rounded-full bg-teal-50 px-3.5 py-1 text-xs font-semibold text-teal-800">
           <span>{vi.app.name}</span>
           <span>•</span>
-          <span>{vi.app.roleBadge}</span>
+          <span>
+            {isLogin
+              ? `${vi.roles.teacherLabel} & ${vi.roles.studentLabel}`
+              : selectedRole === "teacher"
+                ? vi.roles.teacherLabel
+                : vi.roles.studentLabel}
+          </span>
         </div>
         <CardTitle className="text-2xl font-bold text-slate-900">
           {isLogin ? vi.auth.loginTitle : vi.auth.signupTitle}
@@ -106,6 +131,60 @@ export function AuthForm({ mode }: AuthFormProps) {
               className="rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-900"
             >
               {state.successMessage}
+            </div>
+          ) : null}
+
+          {!isLogin ? (
+            <div className="space-y-2">
+              <Label>{vi.auth.roleLabel}</Label>
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                {(
+                  [
+                    [
+                      "student",
+                      vi.auth.roleStudent,
+                      vi.auth.roleStudentDesc,
+                    ],
+                    [
+                      "teacher",
+                      vi.auth.roleTeacher,
+                      vi.auth.roleTeacherDesc,
+                    ],
+                  ] as const
+                ).map(([roleValue, title, desc]) => {
+                  const active = selectedRole === roleValue;
+                  return (
+                    <label
+                      key={roleValue}
+                      className={`flex min-h-[44px] cursor-pointer flex-col gap-1 rounded-xl border p-3 transition-colors ${
+                        active
+                          ? "border-teal-600 bg-teal-50/70 text-teal-950"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="role"
+                          value={roleValue}
+                          checked={active}
+                          onChange={() => setSelectedRole(roleValue)}
+                          className="h-4 w-4 accent-teal-600"
+                        />
+                        <span className="text-xs font-bold sm:text-sm">
+                          {title}
+                        </span>
+                      </div>
+                      <span className="pl-6 text-[11px] leading-snug text-slate-600">
+                        {desc}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              {roleError ? (
+                <p className="text-xs font-medium text-red-600">{roleError}</p>
+              ) : null}
             </div>
           ) : null}
 
@@ -175,6 +254,42 @@ export function AuthForm({ mode }: AuthFormProps) {
             ) : null}
           </div>
 
+          {!isLogin ? (
+            <div className="space-y-1.5 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
+              <label className="flex min-h-[44px] cursor-pointer items-start gap-2.5 text-xs leading-relaxed text-slate-700">
+                <input
+                  type="checkbox"
+                  name="consentAccepted"
+                  className="mt-1 h-4 w-4 shrink-0 rounded accent-teal-600"
+                />
+                <span>
+                  {vi.auth.consentPrefix}{" "}
+                  <Link
+                    href="/terms"
+                    target="_blank"
+                    className="font-semibold text-teal-700 underline"
+                  >
+                    {vi.auth.consentTermsLink}
+                  </Link>{" "}
+                  {vi.auth.consentAndWord}{" "}
+                  <Link
+                    href="/privacy"
+                    target="_blank"
+                    className="font-semibold text-teal-700 underline"
+                  >
+                    {vi.auth.consentPrivacyLink}
+                  </Link>
+                  .
+                </span>
+              </label>
+              {consentError ? (
+                <p className="text-xs font-medium text-red-600">
+                  {consentError}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           <Button
             type="submit"
             size="lg"
@@ -189,6 +304,18 @@ export function AuthForm({ mode }: AuthFormProps) {
                 ? vi.auth.loginButton
                 : vi.auth.signupButton}
           </Button>
+
+          {!isLogin ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-xs leading-relaxed text-amber-950">
+              <p>{vi.auth.kidsAnonymousHint}</p>
+              <Link
+                href="/study"
+                className="mt-1 inline-flex min-h-[36px] items-center font-bold text-teal-800 underline"
+              >
+                {vi.auth.kidsAnonymousLink}
+              </Link>
+            </div>
+          ) : null}
         </form>
       </CardContent>
 
@@ -206,4 +333,3 @@ export function AuthForm({ mode }: AuthFormProps) {
     </Card>
   );
 }
-

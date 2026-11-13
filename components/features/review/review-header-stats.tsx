@@ -1,11 +1,15 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { vi } from "@/lib/i18n/vi";
 import { Button } from "@/components/ui/button";
 import type { ReviewSummaryStats } from "@/lib/review/filters";
+import type { UserRole } from "@/lib/supabase/types";
 
 interface ReviewHeaderStatsProps {
+  setId: string;
+  userRole: UserRole;
   title: string;
   subject: string | null;
   grade: string | null;
@@ -13,9 +17,12 @@ interface ReviewHeaderStatsProps {
   stats: ReviewSummaryStats;
   onOpenCreateExam: () => void;
   onOpenPrintExam: () => void;
+  onOpenSelfQuiz: () => void;
 }
 
 export function ReviewHeaderStats({
+  setId,
+  userRole,
   title,
   subject,
   grade,
@@ -23,6 +30,7 @@ export function ReviewHeaderStats({
   stats,
   onOpenCreateExam,
   onOpenPrintExam,
+  onOpenSelfQuiz,
 }: ReviewHeaderStatsProps) {
   const approvedCount = stats.byStatus.approved;
   const activeTotal = Math.max(1, stats.total - stats.byStatus.archived);
@@ -54,25 +62,45 @@ export function ReviewHeaderStats({
         </div>
 
         <div className="flex flex-col items-stretch gap-2.5 sm:w-96 sm:items-end">
-          <div className="flex flex-wrap justify-end gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              onClick={onOpenPrintExam}
-              className="flex-1 sm:flex-none"
-            >
-              {vi.printExam.openModalButton}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={onOpenCreateExam}
-              className="flex-1 sm:flex-none"
-            >
-              {vi.review.createExamButton}
-            </Button>
-          </div>
+          {userRole === "teacher" ? (
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={onOpenPrintExam}
+                className="flex-1 sm:flex-none"
+              >
+                {vi.printExam.openModalButton}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={onOpenCreateExam}
+                className="flex-1 sm:flex-none"
+              >
+                {vi.review.createExamButton}
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap justify-end gap-2">
+              <Link
+                href={`/dashboard/sets/${setId}/study`}
+                className="inline-flex min-h-[44px] flex-1 items-center justify-center rounded-xl bg-teal-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-teal-700 sm:flex-none"
+              >
+                {vi.studentSet.studyOwnSetButton}
+              </Link>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={onOpenSelfQuiz}
+                className="flex-1 sm:flex-none"
+              >
+                {vi.studentSet.selfQuizButton}
+              </Button>
+            </div>
+          )}
 
           <div className="w-full">
             <div className="mb-1.5 flex items-center justify-between text-xs font-semibold">
@@ -168,14 +196,23 @@ export function ReviewHeaderStats({
             </p>
           </div>
 
-          <Button
-            type="button"
-            size="sm"
-            onClick={onOpenCreateExam}
-            className="shrink-0"
-          >
-            {vi.review.createExamButton}
-          </Button>
+          {userRole === "teacher" ? (
+            <Button
+              type="button"
+              size="sm"
+              onClick={onOpenCreateExam}
+              className="shrink-0"
+            >
+              {vi.review.createExamButton}
+            </Button>
+          ) : (
+            <Link
+              href={`/dashboard/sets/${setId}/study`}
+              className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-xl bg-teal-600 px-4 py-2 text-xs font-bold text-white hover:bg-teal-700"
+            >
+              {vi.studentSet.studyOwnSetButton}
+            </Link>
+          )}
         </div>
       ) : null}
     </section>

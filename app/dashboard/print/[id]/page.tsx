@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedProfile, isTeacherRole } from "@/lib/auth/roles";
 import { buildPrintExamPackage } from "@/lib/export";
 import type { PrintExamHeaderInfo } from "@/lib/export/types";
 import type {
@@ -25,14 +26,33 @@ export default async function PrintExamPreviewPage({
 }: PrintExamPageProps) {
   const { id: examId } = await params;
   const supabase = await createClient();
+  const authProfile = await getAuthenticatedProfile(supabase);
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  if (!authProfile) {
     redirect("/login");
   }
+
+  if (!isTeacherRole(authProfile.role)) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-12">
+        <Card>
+          <CardHeader>
+            <CardTitle>{vi.roles.teacherLabel}</CardTitle>
+            <CardDescription>{vi.roles.teacherOnlyForbidden}</CardDescription>
+            <div className="pt-4">
+              <Link
+                href="/dashboard"
+                className="text-sm font-semibold text-teal-700 hover:underline"
+              >
+                {vi.nav.backToDashboard}
+              </Link>
+            </div>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+  const user = authProfile.user;
 
   // Kiểm tra quyền sở hữu đề in của giáo viên
   const { data: exam } = await supabase

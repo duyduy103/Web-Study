@@ -1,7 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedProfile, isTeacherRole } from "@/lib/auth/roles";
 import { getUserAiQuotaStatus } from "@/lib/ai/quota-and-cache";
+import {
+  buildDailyStudyQueue,
+  computeLearnerStudyAnalytics,
+} from "@/lib/srs";
+import type {
+  SrsCardStateRecord,
+  SrsReviewLogRecord,
+} from "@/lib/srs/types";
 import { logoutAction } from "@/lib/auth/actions";
 import { vi } from "@/lib/i18n/vi";
 import { Button } from "@/components/ui/button";
@@ -16,52 +25,62 @@ import { CreateSetButton } from "@/components/features/dashboard/create-set-butt
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const authProfile = await getAuthenticatedProfile(supabase);
 
-  if (!user) {
+  if (!authProfile) {
     redirect("/login");
   }
 
-  const [{ data: profile }, quotaStatus] = await Promise.all([
+  const { user, role, displayName } = authProfile;
+  const isTeacher = isTeacherRole(role);
+
+  const [
+    quotaStatus,
+    { data: questionSets, error: setsError },
+    { data: examsDataRaw },
+    studySummaryRes,
+    selfAttemptsRes,
+  ] = await Promise.all([
+    getUserAiQuotaStatus(supabase, user.id, role),
     supabase
-      .from("profiles")
-      .select("display_name, role")
-      .eq("id", user.id)
-      .maybeSingle(),
-    getUserAiQuotaStatus(supabase, user.id),
+      .from("question_sets")
+      .select("id, title, subject, grade, created_at")
+      .eq("owner_id", user.id)
+      .order("created_at", { ascending: false }),
+    isTeacher
+      ? supabase
+          .from("exams")
+          .select(
+            "id, title, code, duration_min, is_open, exam_mode, version_count, created_at"
+          )
+          .eq("owner_id", user.id)
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] as never[] }),
+    !isTeacher
+      ? supabase.rpc("get_account_study_summary")
+      : Promise.resolve({ data: null }),
+    !isTeacher
+      ? supabase
+          .from("attempts")
+          .select("id, exam_id, set_id, attempt_token, status, score, started_at, submitted_at")
+          .eq("student_id", user.id)
+          .not("attempt_token", "is", null)
+          .order("started_at", { ascending: false })
+          .limit(12)
+      : Promise.resolve({ data: [] as never[] }),
   ]);
 
-  const metadataName =
-    typeof user.user_metadata?.display_name === "string"
-      ? user.user_metadata.display_name
-      : undefined;
-  const emailPrefix = user.email ? user.email.split("@")[0] : undefined;
-  const displayName =
-    profile?.display_name ||
-    metadataName ||
-    emailPrefix ||
-    vi.dashboard.defaultTeacherName;
-
-  const [{ data: questionSets, error: setsError }, { data: examsDataRaw }] =
-    await Promise.all([
-      supabase
-        .from("question_sets")
-        .select("id, title, subject, grade, created_at")
-        .eq("owner_id", user.id)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("exams")
-        .select(
-          "id, title, code, duration_min, is_open, exam_mode, version_count, created_at"
-        )
-        .eq("owner_id", user.id)
-        .order("created_at", { ascending: false }),
-    ]);
-
-  let examsData = examsDataRaw ?? [];
-  if (!examsDataRaw) {
+  let examsData = (examsDataRaw ?? []) as Array<{
+    id: string;
+    title: string;
+    code: string | null;
+    duration_min: number | null;
+    is_open: boolean;
+    exam_mode: "online" | "print" | "self";
+    version_count: number;
+    created_at: string;
+  }>;
+  if (isTeacher && !examsDataRaw) {
     const { data: fallbackExams } = await supabase
       .from("exams")
       .select("id, title, code, duration_min, is_open, created_at")
@@ -76,9 +95,74 @@ export default async function DashboardPage() {
 
   const sets = questionSets ?? [];
   const setIds = sets.map((s) => s.id);
-  const exams = examsData.filter((e) => e.exam_mode !== "print");
-  const printExams = examsData.filter((e) => e.exam_mode === "print");
+  const exams = isTeacher
+    ? examsData.filter((e) => e.exam_mode === "online")
+    : [];
+  const printExams = isTeacher
+    ? examsData.filter((e) => e.exam_mode === "print")
+    : [];
   const examIds = exams.map((e) => e.id);
+
+  // Dữ liệu "Hôm nay cần ôn" cho học sinh trên toàn bộ các bộ câu hỏi của mình
+  let studentTodayDueCount = 0;
+  let studentStreakDays = 0;
+  let studentRetentionRate = 0;
+  let studentFirstStudySetId: string | null = null;
+  let studentHistory14Days: Array<{
+    dateKey: string;
+    label: string;
+    totalReviews: number;
+  }> = [];
+
+  if (!isTeacher && studySummaryRes?.data) {
+    const summary = studySummaryRes.data as {
+      questions?: Array<{ id: string; set_id: string }>;
+      card_states?: SrsCardStateRecord[];
+      review_logs?: SrsReviewLogRecord[];
+      server_now?: string;
+    };
+    const allQuestions = summary.questions ?? [];
+    const allStates = summary.card_states ?? [];
+    const allLogs = summary.review_logs ?? [];
+    const now = summary.server_now ? new Date(summary.server_now) : new Date();
+
+    const analytics = computeLearnerStudyAnalytics({
+      cardStates: allStates,
+      reviewLogs: allLogs,
+      now,
+    });
+    studentStreakDays = analytics.streakDays;
+    studentRetentionRate = analytics.retentionRate;
+    studentHistory14Days = analytics.history14Days;
+
+    const queue = buildDailyStudyQueue({
+      approvedQuestionIds: allQuestions.map((q) => q.id),
+      cardStates: allStates,
+      reviewLogs: allLogs,
+      dailyNewLimit: 20,
+      now,
+    });
+    studentTodayDueCount = queue.queueQuestionIds.length;
+    const firstQId = queue.queueQuestionIds[0];
+    if (firstQId) {
+      studentFirstStudySetId =
+        allQuestions.find((q) => q.id === firstQId)?.set_id ?? null;
+    } else if (sets.length > 0) {
+      studentFirstStudySetId = sets[0]?.id ?? null;
+    }
+  }
+
+  const selfAttempts = (selfAttemptsRes?.data ?? []) as Array<{
+    id: string;
+    exam_id: string | null;
+    set_id: string | null;
+    attempt_token: string | null;
+    status: string;
+    score: number | null;
+    started_at: string;
+    submitted_at: string | null;
+  }>;
+  const setTitleById = new Map(sets.map((s) => [s.id, s.title]));
 
   const attemptStatsByExamId = new Map<
     string,
@@ -155,16 +239,24 @@ export default async function DashboardPage() {
                 {vi.app.name}
               </span>
               <span className="ml-2 rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-medium text-teal-800">
-                {vi.app.roleBadge}
+                {isTeacher ? vi.roles.teacherLabel : vi.roles.studentLabel}
               </span>
             </div>
           </div>
 
-          <form action={logoutAction}>
-            <Button type="submit" variant="outline" size="sm">
-              {vi.nav.logout}
-            </Button>
-          </form>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard/settings"
+              className="inline-flex min-h-[40px] items-center rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:text-sm"
+            >
+              ⚙ {vi.nav.settings}
+            </Link>
+            <form action={logoutAction}>
+              <Button type="submit" variant="outline" size="sm">
+                {vi.nav.logout}
+              </Button>
+            </form>
+          </div>
         </div>
       </header>
 
@@ -174,7 +266,9 @@ export default async function DashboardPage() {
             <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">
               {vi.dashboard.greetingPrefix} {displayName}!
             </h1>
-            <p className="text-sm text-slate-600">{vi.dashboard.subtitle}</p>
+            <p className="text-sm text-slate-600">
+              {isTeacher ? vi.dashboard.subtitle : vi.studentDashboard.subtitle}
+            </p>
             <p className="pt-1 text-xs font-medium text-teal-800">
               {vi.dashboard.aiQuotaRemainingPrefix}{" "}
               <strong>
@@ -186,6 +280,90 @@ export default async function DashboardPage() {
 
           <CreateSetButton />
         </section>
+
+        {!isTeacher ? (
+          <section className="rounded-3xl border border-teal-200 bg-white p-5 shadow-2xs sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 sm:text-lg">
+                  {vi.studentDashboard.todayStudyTitle}
+                </h2>
+                <p className="mt-1 text-xs text-slate-600">
+                  {vi.study.overview.streakLabel}:{" "}
+                  <strong className="text-amber-800">
+                    🔥 {studentStreakDays} {vi.study.overview.daysUnit}
+                  </strong>{" "}
+                  • {vi.study.overview.retentionRateLabel}{" "}
+                  <strong className="text-emerald-700">
+                    {studentRetentionRate}%
+                  </strong>
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-center">
+                  <span className="block text-[11px] font-semibold text-amber-900">
+                    {vi.studentDashboard.dueCardsLabel}
+                  </span>
+                  <span className="text-xl font-extrabold text-amber-950">
+                    {studentTodayDueCount}
+                  </span>
+                </div>
+
+                {studentFirstStudySetId && studentTodayDueCount > 0 ? (
+                  <Link
+                    href={`/dashboard/sets/${studentFirstStudySetId}/study/review`}
+                    className="inline-flex min-h-[48px] items-center justify-center rounded-2xl bg-teal-600 px-5 py-2.5 text-sm font-bold text-white shadow-2xs hover:bg-teal-700"
+                  >
+                    {vi.studentDashboard.startReviewSetPrefix}{" "}
+                    {setTitleById.get(studentFirstStudySetId) ??
+                      vi.study.overview.startReviewButton}
+                  </Link>
+                ) : sets.length > 0 ? (
+                  <span className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-800">
+                    {vi.studentDashboard.allCaughtUpNotice}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+
+            {studentHistory14Days.some((d) => d.totalReviews > 0) ? (
+              <div className="mt-4 flex h-24 items-end justify-between gap-1 border-t border-slate-100 pt-3">
+                {studentHistory14Days.map((day) => {
+                  const maxRev = Math.max(
+                    1,
+                    ...studentHistory14Days.map((x) => x.totalReviews)
+                  );
+                  const pct =
+                    day.totalReviews === 0
+                      ? 8
+                      : Math.max(15, Math.round((day.totalReviews / maxRev) * 100));
+                  return (
+                    <div
+                      key={day.dateKey}
+                      title={`${day.label}: ${day.totalReviews}`}
+                      className="flex flex-1 flex-col items-center gap-1"
+                    >
+                      <div className="flex h-14 w-full items-end rounded bg-slate-100 p-0.5">
+                        <div
+                          style={{ height: `${pct}%` }}
+                          className={`w-full rounded ${
+                            day.totalReviews > 0
+                              ? "bg-emerald-500"
+                              : "bg-slate-200"
+                          }`}
+                        />
+                      </div>
+                      <span className="text-[9px] text-slate-500">
+                        {day.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
 
         <section className="space-y-4">
           <div className="flex items-center justify-between">
@@ -220,7 +398,9 @@ export default async function DashboardPage() {
                     {vi.dashboard.emptyState.title}
                   </h3>
                   <p className="text-sm leading-relaxed text-slate-600">
-                    {vi.dashboard.emptyState.description}
+                    {isTeacher
+                      ? vi.dashboard.emptyState.description
+                      : vi.studentDashboard.emptySetsDescription}
                   </p>
                   <p className="pt-1 text-xs font-medium text-teal-700">
                     {vi.dashboard.emptyState.hint}
@@ -429,6 +609,49 @@ export default async function DashboardPage() {
                           {vi.printExam.openPrintViewButton}
                         </span>
                       </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </section>
+        ) : null}
+        {!isTeacher && selfAttempts.length > 0 ? (
+          <section className="space-y-4">
+            <h2 className="text-lg font-semibold text-slate-900">
+              {vi.studentDashboard.selfQuizHistoryTitle}
+            </h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {selfAttempts.map((att) => (
+                <Link
+                  key={att.id}
+                  href={`/dashboard/self-quiz/${att.attempt_token}`}
+                  className="block rounded-2xl focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-none"
+                >
+                  <Card className="h-full transition-shadow hover:border-teal-300 hover:shadow-md">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="line-clamp-2 text-base">
+                        {(att.set_id && setTitleById.get(att.set_id)) ||
+                          vi.studentSet.selfQuizButton}
+                      </CardTitle>
+                      <CardDescription>
+                        {new Date(att.started_at).toLocaleString("vi-VN")}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex items-center justify-between text-xs">
+                      {att.status === "in_progress" ? (
+                        <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-900">
+                          {vi.studentDashboard.selfQuizInProgress}
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-emerald-100 px-2.5 py-1 font-bold text-emerald-900">
+                          {vi.studentDashboard.selfQuizScorePrefix}{" "}
+                          {att.score ?? 0}
+                        </span>
+                      )}
+                      <span className="font-semibold text-teal-700">
+                        {vi.studentDashboard.selfQuizViewResult}
+                      </span>
                     </CardContent>
                   </Card>
                 </Link>

@@ -1065,3 +1065,223 @@ export function CreatePrintExamModal({
     </div>
   );
 }
+
+interface CreateSelfQuizModalProps {
+  open: boolean;
+  setId: string;
+  setTitle: string;
+  questions: ReviewQuestionItem[];
+  onClose: () => void;
+}
+
+export function CreateSelfQuizModal({
+  open,
+  setId,
+  setTitle,
+  questions,
+  onClose,
+}: CreateSelfQuizModalProps) {
+  const router = useRouter();
+  const selector = useApprovedQuestionSelector(questions, open, 200);
+  const [durationMin, setDurationMin] = React.useState<string>("");
+  const [shuffleQuestions, setShuffleQuestions] = React.useState(true);
+  const [shuffleChoices, setShuffleChoices] = React.useState(true);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (open) {
+      setErrorMessage(null);
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  async function handleStartSelfQuiz(e: React.FormEvent) {
+    e.preventDefault();
+    if (selector.chosenQuestions.length === 0) {
+      setErrorMessage(vi.exams.create.noApprovedError);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    try {
+      const parsedDuration = durationMin.trim()
+        ? Number.parseInt(durationMin.trim(), 10)
+        : null;
+
+      const res = await fetch("/api/account/self-quiz", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          setId,
+          title: `${setTitle} (${vi.studentSet.selfQuizButton})`,
+          questionIds: selector.chosenQuestions.map((q) => q.id),
+          totalPoints: Number(selector.totalPoints) || 10,
+          durationMin:
+            parsedDuration && parsedDuration > 0 ? parsedDuration : null,
+          shuffleQuestions,
+          shuffleChoices,
+        }),
+      });
+
+      const data: unknown = await res.json();
+      if (!res.ok) {
+        const errObj = data as { error?: string };
+        throw new Error(errObj.error ?? vi.importSet.errors.saveFailed);
+      }
+
+      const payload = data as { attemptToken: string };
+      onClose();
+      router.push(`/dashboard/self-quiz/${payload.attemptToken}`);
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error ? err.message : vi.importSet.errors.saveFailed
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="self-quiz-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4"
+    >
+      <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-xl sm:p-6">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2
+              id="self-quiz-modal-title"
+              className="text-lg font-bold text-slate-900"
+            >
+              {vi.studentSet.selfQuizModalTitle}
+            </h2>
+            <p className="mt-1 text-xs leading-relaxed text-slate-600">
+              {vi.studentSet.selfQuizModalDesc}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="min-h-[44px] min-w-[44px] cursor-pointer rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+          >
+            ✕
+          </button>
+        </div>
+
+        {selector.approvedQuestions.length === 0 ? (
+          <div className="mt-4 space-y-4">
+            <div
+              role="alert"
+              className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
+            >
+              {vi.review.createExamNoApprovedWarning}
+            </div>
+            <div className="flex justify-end">
+              <Button type="button" onClick={onClose}>
+                {vi.common.cancel}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <form
+            onSubmit={(e) => void handleStartSelfQuiz(e)}
+            className="mt-4 space-y-4"
+          >
+            {errorMessage ? (
+              <div
+                role="alert"
+                className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs font-medium text-red-800"
+              >
+                {errorMessage}
+              </div>
+            ) : null}
+
+            <ApprovedQuestionSelectorBox selector={selector} maxCap={200} />
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="self-quiz-duration">
+                  {vi.exams.create.durationLabel}
+                </Label>
+                <Input
+                  id="self-quiz-duration"
+                  type="number"
+                  min={1}
+                  max={300}
+                  value={durationMin}
+                  onChange={(e) => setDurationMin(e.target.value)}
+                  placeholder={vi.exams.create.durationPlaceholder}
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label htmlFor="self-quiz-points">
+                  {vi.exams.create.totalPointsLabel}
+                </Label>
+                <Input
+                  id="self-quiz-points"
+                  type="number"
+                  step="0.5"
+                  min={1}
+                  max={100}
+                  value={selector.totalPoints}
+                  onChange={(e) =>
+                    selector.setTotalPoints(
+                      Number.parseFloat(e.target.value) || 10
+                    )
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2 rounded-xl border border-slate-200 p-3 text-sm">
+              <label className="flex min-h-[36px] cursor-pointer items-center gap-2.5">
+                <input
+                  type="checkbox"
+                  checked={shuffleQuestions}
+                  onChange={(e) => setShuffleQuestions(e.target.checked)}
+                  className="h-4 w-4 rounded accent-teal-600"
+                />
+                <span>{vi.exams.create.shuffleQuestionsLabel}</span>
+              </label>
+
+              <label className="flex min-h-[36px] cursor-pointer items-center gap-2.5">
+                <input
+                  type="checkbox"
+                  checked={shuffleChoices}
+                  onChange={(e) => setShuffleChoices(e.target.checked)}
+                  className="h-4 w-4 rounded accent-teal-600"
+                />
+                <span>{vi.exams.create.shuffleChoicesLabel}</span>
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={isSubmitting}
+              >
+                {vi.common.cancel}
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmitting || selector.chosenQuestions.length === 0}
+              >
+                {isSubmitting
+                  ? vi.studentSet.selfQuizStartingButton
+                  : vi.studentSet.selfQuizStartButton}
+              </Button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}

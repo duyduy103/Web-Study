@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedProfile } from "@/lib/auth/roles";
+import { enforceAccountImportLimits } from "@/lib/limits";
 import { vi } from "@/lib/i18n/vi";
 import {
   importQuestionSetToDatabase,
@@ -21,16 +23,15 @@ const preParsedArraySchema = z.array(parsedQuestionInputSchema);
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const authProfile = await getAuthenticatedProfile(supabase);
 
-    if (!user) {
+    if (!authProfile) {
       return NextResponse.json(
         { error: vi.importSet.errors.unauthorized },
         { status: 401 }
       );
     }
+    const { user, role } = authProfile;
 
     const formData = await request.formData();
 
@@ -85,6 +86,13 @@ export async function POST(request: Request) {
     }
 
     const source = await validateAndReadSource(file, pastedText);
+    await enforceAccountImportLimits({
+      supabase,
+      userId: user.id,
+      role,
+      newFileSizeBytes: source.buffer.byteLength,
+    });
+
     const result = await importQuestionSetToDatabase({
       supabase,
       userId: user.id,

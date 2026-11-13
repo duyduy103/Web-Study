@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { loginSchema, signupSchema } from "@/lib/auth/schemas";
@@ -9,9 +10,11 @@ export interface AuthActionState {
   error?: string;
   successMessage?: string;
   fieldErrors?: {
+    role?: string;
     displayName?: string;
     email?: string;
     password?: string;
+    consentAccepted?: string;
   };
 }
 
@@ -20,7 +23,10 @@ function mapSupabaseAuthError(message: string): string {
   if (lower.includes("invalid login credentials")) {
     return vi.auth.errors.invalidCredentials;
   }
-  if (lower.includes("user already registered") || lower.includes("already been registered")) {
+  if (
+    lower.includes("user already registered") ||
+    lower.includes("already been registered")
+  ) {
     return vi.auth.errors.emailAlreadyRegistered;
   }
   if (lower.includes("email not confirmed")) {
@@ -30,6 +36,19 @@ function mapSupabaseAuthError(message: string): string {
     return vi.auth.errors.rateLimited;
   }
   return vi.auth.errors.generic;
+}
+
+async function getActionClientIp(): Promise<string> {
+  try {
+    const hdrs = await headers();
+    const forwarded = hdrs.get("x-forwarded-for");
+    if (forwarded) {
+      return forwarded.split(",")[0]?.trim() || "unknown";
+    }
+    return hdrs.get("x-real-ip") ?? "local";
+  } catch {
+    return "local";
+  }
 }
 
 export async function loginAction(
@@ -72,9 +91,11 @@ export async function signupAction(
   formData: FormData
 ): Promise<AuthActionState> {
   const rawInput: unknown = {
+    role: formData.get("role") ?? "",
     displayName: formData.get("displayName") ?? "",
     email: formData.get("email") ?? "",
     password: formData.get("password") ?? "",
+    consentAccepted: formData.get("consentAccepted") === "on",
   };
 
   const parsed = signupSchema.safeParse(rawInput);
@@ -82,10 +103,26 @@ export async function signupAction(
     const flattened = parsed.error.flatten().fieldErrors;
     return {
       fieldErrors: {
+        role: flattened.role?.[0],
         displayName: flattened.displayName?.[0],
         email: flattened.email?.[0],
         password: flattened.password?.[0],
+        consentAccepted: flattened.consentAccepted?.[0],
       },
+    };
+  }
+
+  const supabase = await createClient();
+  const clientIp = await getActionClientIp();
+  const { data: allowed } = await supabase.rpc("check_rate_limit", {
+    p_key: `signup:${clientIp}`,
+    p_max_hits: 10,
+    p_window_seconds: 300,
+  });
+
+  if (allowed === false) {
+    return {
+      error: vi.auth.errors.rateLimited,
     };
   }
 
@@ -95,14 +132,18 @@ export async function signupAction(
       ? parsed.data.displayName
       : emailPrefix;
 
-  const supabase = await createClient();
+  // Server chỉ chấp nhận đúng 2 giá trị "student" | "teacher" đã qua Zod
+  const safeRole: "student" | "teacher" =
+    parsed.data.role === "teacher" ? "teacher" : "student";
+
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
       data: {
         display_name: resolvedDisplayName,
-        role: "teacher",
+        role: safeRole,
+        consented_at: new Date().toISOString(),
       },
     },
   });
@@ -127,4 +168,3 @@ export async function logoutAction(): Promise<void> {
   await supabase.auth.signOut();
   redirect("/login");
 }
-

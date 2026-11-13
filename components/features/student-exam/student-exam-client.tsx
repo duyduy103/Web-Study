@@ -28,6 +28,7 @@ export interface PublicExamMeta {
 
 interface StudentExamClientProps {
   examMeta: PublicExamMeta;
+  initialAttemptToken?: string;
 }
 
 const CHOICE_LABELS = ["A", "B", "C", "D", "E", "F", "G", "H"];
@@ -39,8 +40,11 @@ function formatCountdown(secondsLeft: number): string {
   return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
 
-export function StudentExamClient({ examMeta }: StudentExamClientProps) {
-  const cleanCode = examMeta.code.toUpperCase();
+export function StudentExamClient({
+  examMeta,
+  initialAttemptToken,
+}: StudentExamClientProps) {
+  const cleanCode = (examMeta.code || examMeta.id).toUpperCase();
   const tokenStorageKey = `memoquiz_attempt_token_${cleanCode}`;
   const draftStoragePrefix = `memoquiz_attempt_draft_`;
 
@@ -124,7 +128,8 @@ export function StudentExamClient({ examMeta }: StudentExamClientProps) {
     let active = true;
     async function restoreExistingAttempt() {
       try {
-        const savedToken = window.localStorage.getItem(tokenStorageKey);
+        const savedToken =
+          initialAttemptToken ?? window.localStorage.getItem(tokenStorageKey);
         if (!savedToken) {
           if (active) setIsRestoring(false);
           return;
@@ -160,7 +165,7 @@ export function StudentExamClient({ examMeta }: StudentExamClientProps) {
     return () => {
       active = false;
     };
-  }, [tokenStorageKey, hydrateAttemptState]);
+  }, [tokenStorageKey, initialAttemptToken, hydrateAttemptState]);
 
   // Sắp xếp câu hỏi và các lựa chọn cố định theo question_order & choice_orders của lượt làm
   const orderedQuestions: StudentQuestionPayload[] = React.useMemo(() => {

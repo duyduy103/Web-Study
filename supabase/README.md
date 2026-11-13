@@ -11,6 +11,7 @@ Tài liệu này hướng dẫn cách khởi tạo và cập nhật cơ sở d�
 5. `supabase/migrations/20261112000005_phase1_step5_exams.sql`: Mở rộng `exams` (`code`, `is_open`, `show_answers`, `opens_at`, `closes_at`, `max_attempts`, `total_points`), `exam_questions` (`question_snapshot jsonb`, FK `ON DELETE SET NULL`), `attempts` (`student_name`, `student_class`, `attempt_token`, `deadline_at`, `status`, `needs_manual_review`, `question_order`, `choice_orders`, `flagged_questions`), `attempt_answers` (`exam_question_id`, `points_awarded`, `needs_review`), bảng `rate_limits` kèm RLS và các hàm RPC bảo mật cho học sinh làm bài qua `/t/[code]`.
 6. `supabase/migrations/20261112000006_phase2_step6_study.sql`: Mở rộng `question_sets` (`study_enabled`, `study_code`), `attempts` (`learner_id`), tạo bảng `learners`, `learner_set_enrollments`, `card_states`, `review_logs` kèm RLS và 9 hàm RPC `SECURITY DEFINER` cho chế độ ôn tập khoa học (Active Recall & FSRS) tại `/study/[code]`.
 7. `supabase/migrations/20261112000007_phase2_step7_print_exams.sql`: Mở rộng `profiles` (`default_print_header`) và `exams` (`exam_mode`, `version_count`, `seed`, `header_info`) cho tính năng xuất đề in nhiều mã đề (Word `.docx` & PDF A4).
+8. `supabase/migrations/20261112000008_phase3_step9_student_accounts.sql`: Mở app cho tài khoản học sinh/tự học (`handle_new_user` hỗ trợ `student|teacher`, `consented_at`, hàm `is_teacher()`, siết RLS `exams/exam_versions`, liên kết `learners.user_id`, RPC gộp hồ sơ ẩn danh, `ai_global_usage` + `consume_ai_quota_v2`, và `delete_my_account`).
 
 ---
 
@@ -18,9 +19,9 @@ Tài liệu này hướng dẫn cách khởi tạo và cập nhật cơ sở d�
 
 1. Mở dự án của bạn trên [Supabase Dashboard](https://supabase.com/dashboard).
 2. Ở thanh bên trái, chọn **SQL Editor** → bấm **New query**.
-3. Mở tệp migration mới nhất `supabase/migrations/20261112000007_phase2_step7_print_exams.sql`, sao chép toàn bộ nội dung và dán vào ô soạn thảo SQL.
+3. Mở tệp migration mới nhất `supabase/migrations/20261112000008_phase3_step9_student_accounts.sql`, sao chép toàn bộ nội dung và dán vào ô soạn thảo SQL.
 4. Bấm **Run** (hoặc `Ctrl + Enter`).
-5. Khi thấy thông báo `Success`, các cột cơ sở dữ liệu cho tính năng Xuất đề in nhiều mã đề (Bước 7) đã sẵn sàng.
+5. Khi thấy thông báo `Success`, các bảng, policy và hàm RPC cho Bước 9 đã sẵn sàng.
 
 ---
 

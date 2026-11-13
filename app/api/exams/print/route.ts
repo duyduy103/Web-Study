@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { requireTeacherRole } from "@/lib/auth/roles";
 import {
   buildPrintExamPackage,
   MAX_PRINT_QUESTIONS,
@@ -40,16 +41,11 @@ const createPrintExamSchema = z.object({
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: vi.importSet.errors.unauthorized },
-        { status: 401 }
-      );
+    const auth = await requireTeacherRole(supabase);
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
+    const user = auth.profile.user;
 
     const body: unknown = await request.json();
     const parsed = createPrintExamSchema.safeParse(body);

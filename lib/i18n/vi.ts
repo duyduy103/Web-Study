@@ -10,6 +10,9 @@ export const vi = {
   nav: {
     dashboard: "Tổng quan",
     backToDashboard: "Quay lại Tổng quan",
+    settings: "Cài đặt",
+    terms: "Điều khoản sử dụng",
+    privacy: "Chính sách bảo mật",
     login: "Đăng nhập",
     signup: "Đăng ký",
     logout: "Đăng xuất",
@@ -23,16 +26,27 @@ export const vi = {
     optional: "tùy chọn",
   },
   auth: {
-    loginTitle: "Đăng nhập giáo viên",
-    loginSubtitle: "Chào mừng thầy/cô quay trở lại với MemoQuiz",
-    signupTitle: "Tạo tài khoản giáo viên",
-    signupSubtitle: "Chỉ mất 30 giây để bắt đầu tạo bộ câu hỏi tự động",
-    displayNameLabel: "Tên hiển thị của thầy/cô (tùy chọn)",
-    displayNamePlaceholder: "Ví dụ: Cô Lan Anh",
+    loginTitle: "Đăng nhập MemoQuiz",
+    loginSubtitle: "Chào mừng bạn quay trở lại với MemoQuiz",
+    signupTitle: "Tạo tài khoản MemoQuiz",
+    signupSubtitle: "Chỉ mất 30 giây để bắt đầu tạo bộ câu hỏi và ôn tập khoa học",
+    roleLabel: "Bạn sử dụng MemoQuiz với vai trò nào?",
+    roleStudent: "Tôi là học sinh / tự học",
+    roleStudentDesc: "Tạo bộ câu hỏi của riêng mình, ôn tập FSRS & tự làm bài kiểm tra",
+    roleTeacher: "Tôi là giáo viên",
+    roleTeacherDesc: "Tạo đề kiểm tra cho lớp, chấm tự động, thống kê & xuất đề in nhiều mã",
+    displayNameLabel: "Tên hiển thị (tùy chọn)",
+    displayNamePlaceholder: "Ví dụ: Minh Khoa hoặc Cô Lan Anh",
     emailLabel: "Địa chỉ email",
-    emailPlaceholder: "giaovien@truong.edu.vn",
+    emailPlaceholder: "ten@example.com",
     passwordLabel: "Mật khẩu",
     passwordPlaceholder: "Ít nhất 6 ký tự",
+    consentPrefix: "Tôi từ đủ 16 tuổi, hoặc đã được cha mẹ / người giám hộ đồng ý, và tôi đồng ý với",
+    consentTermsLink: "Điều khoản sử dụng",
+    consentAndWord: "và",
+    consentPrivacyLink: "Chính sách bảo mật",
+    kidsAnonymousHint: "Học sinh nhỏ tuổi chưa đủ 16 tuổi không cần tạo tài khoản — có thể vào ôn tập hoặc làm bài ngay bằng mã lớp/biệt danh:",
+    kidsAnonymousLink: "Vào không gian ôn tập ẩn danh →",
     loginButton: "Đăng nhập",
     loginSubmitting: "Đang đăng nhập...",
     signupButton: "Đăng ký tài khoản",
@@ -48,6 +62,9 @@ export const vi = {
       emailInvalid: "Địa chỉ email không đúng định dạng.",
       passwordMin: "Mật khẩu cần có ít nhất 6 ký tự.",
       displayNameMax: "Tên hiển thị không vượt quá 60 ký tự.",
+      roleInvalid: "Vui lòng chọn vai trò hợp lệ (Học sinh hoặc Giáo viên).",
+      consentRequired:
+        "Vui lòng xác nhận độ tuổi / sự đồng ý của phụ huynh và đồng ý với Điều khoản & Chính sách bảo mật.",
     },
     errors: {
       invalidCredentials: "Email hoặc mật khẩu chưa chính xác. Vui lòng kiểm tra lại.",
@@ -155,6 +172,8 @@ export const vi = {
   },
   ai: {
     quotaExhausted: "Bạn đã dùng hết lượt AI hôm nay, quay lại vào ngày mai.",
+    globalQuotaExhausted:
+      "Hệ thống AI tạm đạt giới hạn hôm nay, thử lại ngày mai.",
     missingApiKey: "Chưa cấu hình khóa GEMINI_API_KEY hoặc tên model trên máy chủ.",
     callFailed:
       "Không thể xử lý bằng AI lúc này sau khi đã thử lại. Vui lòng thử lại sau.",
@@ -908,6 +927,105 @@ export const vi = {
       crossRefStemCol: "Nội dung tóm tắt",
       crossRefVersionColPrefix: "Mã",
     },
+  },
+  roles: {
+    teacherLabel: "Giáo viên",
+    studentLabel: "Học sinh / Tự học",
+    teacherOnlyForbidden:
+      "Chức năng này chỉ dành cho tài khoản Giáo viên. Tài khoản học sinh không có quyền truy cập.",
+  },
+  limits: {
+    maxSetsReachedPrefix:
+      "Tài khoản học sinh đạt giới hạn tối đa",
+    maxSetsReachedSuffix:
+      "bộ câu hỏi. Vui lòng xóa bớt bộ cũ trước khi tạo bộ mới.",
+    fileTooLargePrefix: "Kích thước file vượt quá giới hạn",
+    fileTooLargeSuffix: "MB dành cho tài khoản của bạn.",
+    pdfTooManyPagesPrefix: "File PDF vượt quá giới hạn",
+    pdfTooManyPagesSuffix: "trang dành cho tài khoản của bạn.",
+    storageQuotaExceededPrefix:
+      "Tổng dung lượng lưu trữ đã đạt giới hạn",
+    storageQuotaExceededSuffix:
+      "MB. Vui lòng xóa bớt bộ câu hỏi cũ để giải phóng dung lượng.",
+  },
+  studentDashboard: {
+    subtitle:
+      "Tạo bộ câu hỏi của riêng em, ôn tập ngắt quãng FSRS và tự kiểm tra mỗi ngày.",
+    todayStudyTitle: "Hôm nay cần ôn (tất cả bộ của em)",
+    dueCardsLabel: "Thẻ đến hạn ôn",
+    totalApprovedCardsLabel: "Tổng thẻ đã duyệt",
+    startReviewSetPrefix: "Ôn ngay:",
+    allCaughtUpNotice:
+      "Tuyệt vời! Em đã hoàn thành hết thẻ đến hạn ở tất cả các bộ của mình hôm nay.",
+    emptySetsDescription:
+      "Em có thể tải lên đề cương (.docx, .pdf, .xlsx, ảnh) hoặc dán văn bản để tự tạo flashcard & bài ôn tập chỉ trong vài giây.",
+    selfQuizHistoryTitle: "Lịch sử tự làm bài của em",
+    selfQuizScorePrefix: "Điểm:",
+    selfQuizViewResult: "Xem lại bài làm →",
+    selfQuizInProgress: "Đang làm dở",
+  },
+  studentSet: {
+    studyOwnSetButton: "📖 Ôn tập ngay (Gấp sách + FSRS)",
+    selfQuizButton: "📝 Tự làm bài kiểm tra",
+    selfQuizModalTitle: "Tạo bài tự kiểm tra cá nhân",
+    selfQuizModalDesc:
+      "Chọn câu hỏi từ các câu đã duyệt trong bộ này để tự kiểm tra. Kết quả chỉ lưu riêng cho em.",
+    selfQuizStartButton: "Bắt đầu tự làm bài",
+    selfQuizStartingButton: "Đang chuẩn bị đề...",
+    selfQuizBannerTitle: "Chế độ tự học trên bộ câu hỏi của em",
+    selfQuizBannerDesc:
+      "Em có thể ôn tập theo lịch FSRS (Gấp sách) hoặc tự tạo bài kiểm tra ngẫu nhiên để thử sức.",
+    backToSet: "← Quay lại bộ câu hỏi",
+    selfQuizCompletedTitle: "Kết quả bài tự kiểm tra",
+  },
+  settings: {
+    pageTitle: "Cài đặt tài khoản",
+    pageSubtitle:
+      "Quản lý thông tin hiển thị, vai trò sử dụng, gộp lịch ôn ẩn danh và dữ liệu cá nhân.",
+    profileSectionTitle: "Thông tin cá nhân",
+    displayNameLabel: "Tên hiển thị",
+    saveProfileButton: "Lưu tên hiển thị",
+    savingProfileButton: "Đang lưu...",
+    profileSavedNotice: "Đã cập nhật tên hiển thị thành công.",
+    roleSectionTitle: "Vai trò tài khoản",
+    currentRolePrefix: "Vai trò hiện tại:",
+    switchToStudentTitle: "Chuyển sang vai trò Học sinh / Tự học",
+    switchToTeacherTitle: "Chuyển sang vai trò Giáo viên",
+    switchToStudentWarning:
+      "Lưu ý: Khi chuyển sang Học sinh, các bài kiểm tra giao cho lớp và đề in bạn đã tạo sẽ tạm khóa (không mở/tạo mới được) cho đến khi bạn chuyển lại thành Giáo viên.",
+    switchToTeacherWarning:
+      "Khi chuyển sang Giáo viên, bạn sẽ mở khóa thêm tính năng giao bài kiểm tra cho lớp, xem kết quả học sinh và xuất đề in nhiều mã đề.",
+    confirmSwitchCheckbox: "Tôi đã đọc lưu ý và xác nhận muốn đổi vai trò.",
+    switchRoleButton: "Đổi vai trò",
+    switchingRoleButton: "Đang cập nhật vai trò...",
+    roleSwitchedNotice: "Đã chuyển đổi vai trò thành công.",
+    mergeSectionTitle: "Gộp hồ sơ ôn tập ẩn danh cũ",
+    mergeSectionDesc:
+      "Nếu trước đây em từng ôn tập bằng biệt danh và lưu Mã khôi phục 12 ký tự (dạng XXXX-XXXX-XXXX), hãy nhập mã đó tại đây để chuyển toàn bộ lịch ôn FSRS và streak vào tài khoản này (chỉ dùng 1 lần, không bị trùng thẻ).",
+    mergeCodeLabel: "Mã khôi phục 12 ký tự",
+    mergeCodePlaceholder: "Ví dụ: ABCD-EFGH-JKLM",
+    mergeButton: "Gộp lịch ôn vào tài khoản",
+    mergingButton: "Đang gộp dữ liệu...",
+    mergeSuccessPrefix: "Đã gộp thành công",
+    mergeSuccessMiddle: "thẻ ôn tập và",
+    mergeSuccessSuffix: "lượt ôn vào tài khoản của bạn!",
+    mergeInvalidCodeError:
+      "Mã khôi phục không tồn tại hoặc đã được gộp trước đó.",
+    dangerSectionTitle: "Xóa tài khoản & toàn bộ dữ liệu",
+    dangerSectionDesc:
+      "Hành động này không thể hoàn tác. Toàn bộ bộ câu hỏi, file đã tải lên trong Storage, lịch sử ôn tập FSRS và bài kiểm tra của bạn sẽ bị xóa vĩnh viễn.",
+    deleteConfirmPromptPrefix: "Để xác nhận, hãy gõ chính xác cụm từ:",
+    deleteConfirmKeyword: "XOA TAI KHOAN",
+    deleteKeywordMismatchError:
+      "Vui lòng gõ chính xác cụm từ XOA TAI KHOAN để xác nhận xóa.",
+    deleteAccountButton: "Xóa vĩnh viễn tài khoản",
+    deletingAccountButton: "Đang xóa toàn bộ dữ liệu...",
+  },
+  legal: {
+    sampleDocumentBanner:
+      "⚠️ Văn bản mẫu (Sample Draft) — Giáo viên/đơn vị vận hành cần rà soát và điều chỉnh cho phù hợp trước khi phát hành chính thức.",
+    termsTitle: "Điều khoản sử dụng MemoQuiz",
+    privacyTitle: "Chính sách bảo mật & Dữ liệu cá nhân",
   },
 } as const;
 

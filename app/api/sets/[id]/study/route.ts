@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { requireTeacherRole } from "@/lib/auth/roles";
 import { generateExamJoinCode } from "@/lib/grading";
 import { vi } from "@/lib/i18n/vi";
 
@@ -16,15 +17,9 @@ export async function GET(_request: Request, context: RouteContext) {
   try {
     const { id: setId } = await context.params;
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: vi.importSet.errors.unauthorized },
-        { status: 401 }
-      );
+    const auth = await requireTeacherRole(supabase);
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
 
     const { data, error } = await supabase.rpc("get_teacher_set_study_stats", {
@@ -62,16 +57,11 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     const { id: setId } = await context.params;
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: vi.importSet.errors.unauthorized },
-        { status: 401 }
-      );
+    const auth = await requireTeacherRole(supabase);
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
+    const user = auth.profile.user;
 
     const body: unknown = await request.json();
     const parsed = patchStudySetSchema.safeParse(body);

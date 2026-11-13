@@ -1,8 +1,11 @@
 import "server-only";
 import crypto from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database, Json } from "@/lib/supabase/types";
-import { getAiDailyLimit } from "@/lib/ai/client";
+import type { Database, Json, UserRole } from "@/lib/supabase/types";
+import {
+  getAiDailyLimitForRole,
+  getAiGlobalDailyLimit,
+} from "@/lib/ai/limits";
 import { vi } from "@/lib/i18n/vi";
 
 export interface QuotaStatus {
@@ -38,11 +41,39 @@ export function buildAiCacheKey(params: {
   return hash.digest("hex");
 }
 
+async function resolveUserRole(
+  supabase: SupabaseClient<Database>,
+  userId?: string
+): Promise<UserRole> {
+  let targetId = userId;
+  if (!targetId && supabase.auth?.getUser) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    targetId = user?.id;
+  }
+  if (!targetId) return "student";
+
+  try {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", targetId)
+      .maybeSingle();
+
+    return profile?.role === "teacher" ? "teacher" : "student";
+  } catch {
+    return "student";
+  }
+}
+
 export async function getUserAiQuotaStatus(
   supabase: SupabaseClient<Database>,
-  userId: string
+  userId: string,
+  knownRole?: UserRole
 ): Promise<QuotaStatus> {
-  const dailyLimit = getAiDailyLimit();
+  const role = knownRole ?? (await resolveUserRole(supabase, userId));
+  const dailyLimit = getAiDailyLimitForRole(role);
   const today = new Date().toISOString().slice(0, 10);
 
   const { data } = await supabase
@@ -98,12 +129,17 @@ export async function saveAiCache(params: {
  * Nếu vượt hạn mức ngày, ném lỗi tiếng Việt thân thiện.
  */
 export async function consumeUserAiQuotaOrThrow(
-  supabase: SupabaseClient<Database>
+  supabase: SupabaseClient<Database>,
+  knownRole?: UserRole,
+  userId?: string
 ): Promise<QuotaConsumeResult> {
-  const dailyLimit = getAiDailyLimit();
+  const role = knownRole ?? (await resolveUserRole(supabase, userId));
+  const userLimit = getAiDailyLimitForRole(role);
+  const globalLimit = getAiGlobalDailyLimit();
 
-  const { data, error } = await supabase.rpc("consume_ai_quota", {
-    p_daily_limit: dailyLimit,
+  const { data, error } = await supabase.rpc("consume_ai_quota_v2", {
+    p_user_limit: userLimit,
+    p_global_limit: globalLimit,
     p_tokens: 0,
   });
 
@@ -113,12 +149,16 @@ export async function consumeUserAiQuotaOrThrow(
 
   const payload = data as {
     allowed?: boolean;
+    reason?: string | null;
     calls?: number;
     tokens?: number;
     remaining?: number;
   } | null;
 
   if (!payload || payload.allowed !== true) {
+    if (payload?.reason === "GLOBAL_LIMIT") {
+      throw new Error(vi.ai.globalQuotaExhausted);
+    }
     throw new Error(vi.ai.quotaExhausted);
   }
 
@@ -126,7 +166,7 @@ export async function consumeUserAiQuotaOrThrow(
     allowed: true,
     calls: payload.calls ?? 1,
     tokens: payload.tokens ?? 0,
-    remaining: payload.remaining ?? Math.max(0, dailyLimit - 1),
+    remaining: payload.remaining ?? Math.max(0, userLimit - 1),
   };
 }
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedProfile, isTeacherRole } from "@/lib/auth/roles";
 import { vi } from "@/lib/i18n/vi";
 import {
   Card,
@@ -26,13 +27,33 @@ export default async function TeacherExamDetailPage({
 }: ExamDetailPageProps) {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const authProfile = await getAuthenticatedProfile(supabase);
 
-  if (!user) {
+  if (!authProfile) {
     redirect("/login");
   }
+
+  if (!isTeacherRole(authProfile.role)) {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-3xl flex-col items-center justify-center px-4 py-12 text-center">
+        <Card className="w-full max-w-md p-6">
+          <CardHeader>
+            <CardTitle>{vi.roles.teacherLabel}</CardTitle>
+            <CardDescription>{vi.roles.teacherOnlyForbidden}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link
+              href="/dashboard"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-700"
+            >
+              {vi.nav.backToDashboard}
+            </Link>
+          </CardContent>
+        </Card>
+      </main>
+    );
+  }
+  const user = authProfile.user;
 
   const { data: exam } = await supabase
     .from("exams")

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedProfile, isTeacherRole } from "@/lib/auth/roles";
 import { getUserAiQuotaStatus } from "@/lib/ai/quota-and-cache";
 import { vi } from "@/lib/i18n/vi";
 import {
@@ -22,13 +23,13 @@ export default async function QuestionSetDetailPage({
 }: SetDetailPageProps) {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const authProfile = await getAuthenticatedProfile(supabase);
 
-  if (!user) {
+  if (!authProfile) {
     redirect("/login");
   }
+  const { user, role } = authProfile;
+  const isTeacher = isTeacherRole(role);
 
   const [
     { data: questionSet },
@@ -42,7 +43,7 @@ export default async function QuestionSetDetailPage({
       .eq("id", id)
       .eq("owner_id", user.id)
       .maybeSingle(),
-    getUserAiQuotaStatus(supabase, user.id),
+    getUserAiQuotaStatus(supabase, user.id, role),
     supabase
       .from("exams")
       .select("id, title, code, is_open, exam_mode, version_count, created_at")
@@ -211,7 +212,7 @@ export default async function QuestionSetDetailPage({
       </header>
 
       <main className="mx-auto max-w-5xl space-y-5 px-4 py-6 sm:px-6 sm:py-8">
-        {onlineExams.length > 0 ? (
+        {isTeacher && onlineExams.length > 0 ? (
           <section className="rounded-2xl border border-teal-200 bg-teal-50/60 p-4">
             <h2 className="text-xs font-bold tracking-wide text-teal-900 uppercase">
               {vi.exams.setExamsBannerTitle} ({onlineExams.length})
@@ -246,7 +247,7 @@ export default async function QuestionSetDetailPage({
           </section>
         ) : null}
 
-        {printExams.length > 0 ? (
+        {isTeacher && printExams.length > 0 ? (
           <section className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
             <h2 className="text-xs font-bold tracking-wide text-amber-900 uppercase">
               {vi.printExam.savedPrintExamsTitle} ({printExams.length})
@@ -274,6 +275,7 @@ export default async function QuestionSetDetailPage({
 
         <ReviewWorkspace
           setId={questionSet.id}
+          userRole={role}
           title={questionSet.title}
           subject={questionSet.subject}
           grade={questionSet.grade}

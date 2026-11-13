@@ -13,6 +13,9 @@ export const loginSchema = z.object({
 });
 
 export const signupSchema = z.object({
+  role: z.enum(["student", "teacher"], {
+    message: vi.auth.validation.roleInvalid,
+  }),
   displayName: z
     .string()
     .trim()
@@ -26,8 +29,10 @@ export const signupSchema = z.object({
   password: z
     .string()
     .min(6, { message: vi.auth.validation.passwordMin }),
+  consentAccepted: z.boolean().refine((val) => val === true, {
+    message: vi.auth.validation.consentRequired,
+  }),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type SignupInput = z.infer<typeof signupSchema>;
-
