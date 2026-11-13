@@ -12,6 +12,8 @@ import type {
 } from "@/lib/srs/types";
 import { vi } from "@/lib/i18n/vi";
 import { Button } from "@/components/ui/button";
+import { ProgressBar } from "@/components/ui/progress-bar";
+import { LazyMotion, domAnimation, m } from "framer-motion";
 
 interface StudyQuestionItem {
   id: string;
@@ -412,6 +414,92 @@ function ActiveRecallInner({
     }
   }
 
+  // Phím tắt bàn phím (Space/Enter: hiện đáp án, 1/2/3/4: tự chấm FSRS, Z: hoàn tác)
+  const handlersRef = React.useRef({
+    handleRevealAnswer,
+    handleRateCard,
+    handleUndoLastRating,
+    revealedAnswer,
+    isRevealingAnswer,
+    currentQuestion,
+    isSubmittingRating,
+    lastRated,
+    isUndoing,
+  });
+
+  React.useEffect(() => {
+    handlersRef.current = {
+      handleRevealAnswer,
+      handleRateCard,
+      handleUndoLastRating,
+      revealedAnswer,
+      isRevealingAnswer,
+      currentQuestion,
+      isSubmittingRating,
+      lastRated,
+      isUndoing,
+    };
+  });
+
+  React.useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        (activeEl.tagName === "INPUT" ||
+          activeEl.tagName === "TEXTAREA" ||
+          activeEl.getAttribute("contenteditable") === "true")
+      ) {
+        return;
+      }
+
+      const {
+        handleRevealAnswer: doReveal,
+        handleRateCard: doRate,
+        handleUndoLastRating: doUndo,
+        revealedAnswer: isRev,
+        isRevealingAnswer: isRevLoading,
+        currentQuestion: curQ,
+        isSubmittingRating: isSubmitting,
+        lastRated: lastR,
+        isUndoing: isUndoingRating,
+      } = handlersRef.current;
+
+      if (e.key === " " || e.key === "Enter") {
+        if (!isRev && !isRevLoading && curQ) {
+          e.preventDefault();
+          void doReveal();
+        }
+      } else if (isRev && !isSubmitting) {
+        if (e.key === "1") {
+          e.preventDefault();
+          void doRate("again");
+        } else if (e.key === "2") {
+          e.preventDefault();
+          void doRate("hard");
+        } else if (e.key === "3") {
+          e.preventDefault();
+          void doRate("good");
+        } else if (e.key === "4") {
+          e.preventDefault();
+          void doRate("easy");
+        }
+      }
+
+      if (
+        (e.key === "z" || e.key === "u" || e.key === "Z") &&
+        lastR &&
+        !isUndoingRating
+      ) {
+        e.preventDefault();
+        void doUndo();
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   if (isLoading) {
     return (
       <div className="mx-auto flex min-h-[60vh] max-w-3xl items-center justify-center px-4 text-sm text-slate-600">
@@ -461,23 +549,38 @@ function ActiveRecallInner({
     return (
       <div className="mx-auto max-w-2xl space-y-6 px-4 py-10">
         <PomodoroWidget />
-        <section className="rounded-3xl border border-teal-200 bg-white p-6 text-center shadow-sm sm:p-8">
-          <h1 className="text-2xl font-extrabold text-slate-900">
-            {vi.study.review.summary.title}
-          </h1>
-          <p className="mt-1 text-sm text-slate-600">{setTitle}</p>
+        <section className="relative overflow-hidden rounded-3xl border-2 border-teal-200 bg-white p-6 text-center shadow-md sm:p-8">
+          {/* Subtle celebratory spark SVG motif */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-8 -right-8 h-32 w-32 rounded-full bg-teal-100/40 blur-2xl"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -bottom-8 -left-8 h-32 w-32 rounded-full bg-emerald-100/40 blur-2xl"
+          />
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-xs font-semibold text-slate-600">
+          <div className="relative">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-500 text-2xl text-white shadow-xs">
+              🎉
+            </div>
+            <h1 className="text-2xl font-extrabold text-slate-900 sm:text-3xl">
+              {vi.study.review.summary.title}
+            </h1>
+            <p className="mt-1 text-sm text-slate-600">{setTitle}</p>
+          </div>
+
+          <div className="relative mt-6 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border-2 border-slate-200/90 bg-slate-50 p-4">
+              <p className="text-xs font-bold text-slate-600">
                 {vi.study.review.summary.reviewedCountLabel}
               </p>
               <p className="mt-1 text-3xl font-extrabold text-slate-900">
                 {sessionReviewedCount}
               </p>
             </div>
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
-              <p className="text-xs font-semibold text-emerald-900">
+            <div className="rounded-2xl border-2 border-emerald-300/80 bg-emerald-50/70 p-4">
+              <p className="text-xs font-bold text-emerald-900">
                 {vi.study.review.summary.retentionRateLabel}
               </p>
               <p className="mt-1 text-3xl font-extrabold text-emerald-800">
@@ -487,7 +590,7 @@ function ActiveRecallInner({
           </div>
 
           {hardestQ ? (
-            <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50/60 p-4 text-left">
+            <div className="relative mt-5 rounded-2xl border border-amber-200 bg-amber-50/60 p-4 text-left">
               <p className="text-xs font-bold text-amber-900">
                 {vi.study.review.summary.hardestCardTitle}
               </p>
@@ -498,7 +601,7 @@ function ActiveRecallInner({
           ) : null}
 
           {earliestNextDueIso ? (
-            <p className="mt-4 text-xs text-slate-600">
+            <p className="relative mt-4 text-xs text-slate-600">
               {vi.study.review.summary.nextDueTitle}{" "}
               <strong className="text-slate-900">
                 {new Date(earliestNextDueIso).toLocaleString("vi-VN")}
@@ -506,21 +609,21 @@ function ActiveRecallInner({
             </p>
           ) : null}
 
-          <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <div className="relative mt-6 flex flex-wrap justify-center gap-3">
             {lastRated ? (
               <Button
                 type="button"
                 variant="secondary"
                 disabled={isUndoing}
                 onClick={() => void handleUndoLastRating()}
-                className="min-h-[48px]"
+                className="min-h-[48px] rounded-2xl font-bold"
               >
                 {vi.study.review.undoButton}
               </Button>
             ) : null}
             <Link
               href={overviewHref}
-              className="inline-flex min-h-[48px] items-center justify-center rounded-2xl bg-teal-600 px-6 py-3 text-base font-bold text-white hover:bg-teal-700"
+              className="inline-flex min-h-[48px] items-center justify-center rounded-2xl bg-teal-600 px-6 py-3 text-base font-bold text-white shadow-xs transition-transform hover:bg-teal-700 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
             >
               {vi.study.review.summary.backToSetOverviewButton}
             </Link>
@@ -535,286 +638,335 @@ function ActiveRecallInner({
   const isClozeQuestion = currentQuestion.type === "cloze";
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5 px-4 py-6 pb-28">
-      <PomodoroWidget />
+    <LazyMotion features={domAnimation}>
+      <div data-space="learn" className="mx-auto max-w-3xl space-y-4 px-4 py-6 pb-28">
+        <PomodoroWidget />
 
-      {/* Thanh điều hướng trên cùng */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link
-          href={overviewHref}
-          className="inline-flex min-h-[44px] items-center text-sm font-semibold text-teal-700 hover:underline"
-        >
-          {vi.study.review.backToOverview}
-        </Link>
+        {/* Thanh tiến độ phiên học */}
+        <ProgressBar
+          value={currentIndex}
+          max={queueIds.length}
+          label={`Tiến độ phiên: ${currentIndex}/${queueIds.length} thẻ`}
+          showPercent
+          variant="study"
+          size="default"
+        />
 
-        <div className="flex flex-wrap items-center gap-2">
-          {lastRated ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              disabled={isUndoing}
-              onClick={() => void handleUndoLastRating()}
-              className="min-h-[44px] text-xs font-bold"
-            >
-              {vi.study.review.undoButton}
-            </Button>
-          ) : null}
-
-          <span className="rounded-full bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-800">
-            {vi.study.review.remainingQueuePrefix} {remainingCount}
-          </span>
-        </div>
-      </div>
-
-      {undoNotice ? (
-        <div
-          role="status"
-          className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-2.5 text-xs font-semibold text-teal-900"
-        >
-          ✓ {vi.study.review.undoSuccessNotice}
-        </div>
-      ) : null}
-
-      {/* Thẻ câu hỏi chế độ Gấp sách */}
-      <article className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-bold ${
-              leechOnly
-                ? "bg-rose-100 text-rose-900"
-                : "bg-teal-50 text-teal-800"
-            }`}
+        {/* Thanh điều hướng trên cùng */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+          <Link
+            href={overviewHref}
+            className="inline-flex min-h-[44px] items-center text-sm font-semibold text-teal-700 hover:underline"
           >
-            {leechOnly
-              ? vi.study.review.leechOnlyModeBadge
-              : vi.study.review.activeRecallBadge}
-          </span>
-          <div className="flex items-center gap-1.5 text-xs text-slate-500">
-            {currentQuestion.topic ? (
-              <span className="rounded bg-slate-100 px-2 py-0.5 font-medium text-slate-700">
-                {currentQuestion.topic}
-              </span>
+            {vi.study.review.backToOverview}
+          </Link>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {lastRated ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={isUndoing}
+                onClick={() => void handleUndoLastRating()}
+                className="min-h-[44px] text-xs font-bold"
+              >
+                {vi.study.review.undoButton} <kbd className="ml-1 text-[10px] text-slate-500 font-normal">[Z]</kbd>
+              </Button>
             ) : null}
-            <span>
-              Thẻ {currentIndex + 1}/{queueIds.length}
+
+            <span className="rounded-full bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-800">
+              {vi.study.review.remainingQueuePrefix} {remainingCount}
             </span>
           </div>
         </div>
 
-        {/* Nội dung câu hỏi (Stem) */}
-        <h1 className="mt-5 text-lg font-bold leading-relaxed whitespace-pre-wrap text-slate-900 sm:text-xl">
-          {currentQuestion.stem}
-        </h1>
-
-        {isClozeQuestion && !revealedAnswer ? (
-          <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50/70 px-3.5 py-2.5 text-xs font-medium text-amber-900">
-            {vi.study.review.clozeBlankHint}
-          </p>
+        {undoNotice ? (
+          <div
+            role="status"
+            className="rounded-2xl border border-teal-200 bg-teal-50 px-4 py-2.5 text-xs font-semibold text-teal-900"
+          >
+            ✓ {vi.study.review.undoSuccessNotice}
+          </div>
         ) : null}
 
-        {/* Ô gõ nháp suy nghĩ trước khi lật đáp án */}
-        <div className="mt-5 space-y-2">
-          <label
-            htmlFor="active-recall-scratchpad"
-            className="block text-xs font-semibold text-slate-600"
-          >
-            {vi.study.review.thinkPrompt}
-          </label>
-          <textarea
-            id="active-recall-scratchpad"
-            rows={2}
-            value={scratchpad}
-            onChange={(e) => setScratchpad(e.target.value)}
-            placeholder={vi.study.review.scratchpadPlaceholder}
-            className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-900 focus-visible:border-teal-600 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-teal-600/25 focus-visible:outline-none"
-          />
-        </div>
+        {/* Thẻ câu hỏi chế độ Gấp sách */}
+        <m.article
+          key={currentQuestion.id}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+          className="relative rounded-3xl border-2 border-slate-200/90 bg-white p-6 shadow-md sm:p-8 motion-reduce:transition-none"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-bold ${
+                leechOnly
+                  ? "bg-rose-100 text-rose-900"
+                  : "bg-teal-50 text-teal-800"
+              }`}
+            >
+              {leechOnly
+                ? vi.study.review.leechOnlyModeBadge
+                : vi.study.review.activeRecallBadge}
+            </span>
+            <div className="flex items-center gap-1.5 text-xs text-slate-500">
+              {currentQuestion.topic ? (
+                <span className="rounded-lg bg-slate-100 px-2.5 py-1 font-medium text-slate-700">
+                  {currentQuestion.topic}
+                </span>
+              ) : null}
+              <span className="font-semibold text-slate-600">
+                Thẻ {currentIndex + 1}/{queueIds.length}
+              </span>
+            </div>
+          </div>
 
-        {/* Với MCQ/True-False: mặc định ẩn lựa chọn, có nút "Hiện gợi ý lựa chọn" */}
-        {isChoiceQuestion && !revealedAnswer ? (
-          <div className="mt-4">
-            {!choicesHint ? (
+          {/* Nội dung câu hỏi (Stem) */}
+          <h1 className="mt-5 text-lg font-bold leading-relaxed whitespace-pre-wrap text-slate-900 sm:text-xl">
+            {currentQuestion.stem}
+          </h1>
+
+          {isClozeQuestion && !revealedAnswer ? (
+            <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50/70 px-3.5 py-2.5 text-xs font-medium text-amber-900">
+              {vi.study.review.clozeBlankHint}
+            </p>
+          ) : null}
+
+          {/* Ô gõ nháp suy nghĩ trước khi lật đáp án */}
+          <div className="mt-5 space-y-2">
+            <label
+              htmlFor="active-recall-scratchpad"
+              className="block text-xs font-semibold text-slate-600"
+            >
+              {vi.study.review.thinkPrompt}
+            </label>
+            <textarea
+              id="active-recall-scratchpad"
+              rows={2}
+              value={scratchpad}
+              onChange={(e) => setScratchpad(e.target.value)}
+              placeholder={vi.study.review.scratchpadPlaceholder}
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-900 focus-visible:border-teal-600 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-teal-600/25 focus-visible:outline-none"
+            />
+          </div>
+
+          {/* Với MCQ/True-False: mặc định ẩn lựa chọn, có nút "Hiện gợi ý lựa chọn" */}
+          {isChoiceQuestion && !revealedAnswer ? (
+            <div className="mt-4">
+              {!choicesHint ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={isLoadingHint}
+                  onClick={() => void handleShowChoicesHint()}
+                  className="min-h-[44px] text-xs font-semibold"
+                >
+                  {isLoadingHint
+                    ? vi.common.loading
+                    : vi.study.review.showChoicesHintButton}
+                </Button>
+              ) : (
+                <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs font-semibold text-slate-600">
+                    {vi.study.review.choicesHintTitle}
+                  </p>
+                  <div className="grid gap-2">
+                    {choicesHint.map((ch, idx) => {
+                      const isSelected = selectedHintId === ch.id;
+                      const choiceLetter = String.fromCharCode(65 + idx);
+                      return (
+                        <button
+                          key={ch.id}
+                          type="button"
+                          aria-pressed={isSelected}
+                          onClick={() => setSelectedHintId(ch.id)}
+                          className={`flex min-h-[44px] w-full cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-1 ${
+                            isSelected
+                              ? "border-teal-600 bg-teal-50 font-semibold text-teal-950"
+                              : "border-slate-200 bg-white text-slate-800 hover:bg-slate-100"
+                          }`}
+                        >
+                          <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-800">
+                            {choiceLetter}
+                          </span>
+                          <span>{ch.text}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
+
+          {/* Nút Hiện đáp án hoặc Khung Đáp án & 4 nút tự chấm FSRS */}
+          {!revealedAnswer ? (
+            <div className="mt-6 pt-2">
               <Button
                 type="button"
-                variant="secondary"
-                disabled={isLoadingHint}
-                onClick={() => void handleShowChoicesHint()}
-                className="min-h-[44px] text-xs font-semibold"
+                variant="accent"
+                disabled={isRevealingAnswer}
+                onClick={() => void handleRevealAnswer()}
+                className="min-h-[56px] w-full rounded-2xl text-lg font-black shadow-md active:scale-[0.99] transition-transform motion-reduce:transition-none motion-reduce:active:scale-100"
               >
-                {isLoadingHint
-                  ? vi.common.loading
-                  : vi.study.review.showChoicesHintButton}
+                {isRevealingAnswer
+                  ? vi.study.review.revealingAnswerStatus
+                  : vi.study.review.revealAnswerButton}{" "}
+                <kbd className="ml-2 rounded-lg bg-black/20 px-2.5 py-0.5 text-xs font-bold text-white uppercase">
+                  Space
+                </kbd>
               </Button>
-            ) : (
-              <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-semibold text-slate-600">
-                  {vi.study.review.choicesHintTitle}
+            </div>
+          ) : (
+            <m.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              role="region"
+              aria-live="polite"
+              aria-label="Đáp án và tự đánh giá độ nhớ"
+              className="mt-6 space-y-5 border-t-2 border-slate-100 pt-6"
+            >
+              {/* Đáp án đúng */}
+              <div className="rounded-2xl border-2 border-emerald-300 bg-emerald-50/70 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-emerald-900">
+                  {vi.study.review.correctAnswerTitle}
                 </p>
-                <div className="grid gap-2">
-                  {choicesHint.map((ch, idx) => {
-                    const isSelected = selectedHintId === ch.id;
-                    const choiceLetter = String.fromCharCode(65 + idx);
-                    return (
-                      <button
+
+                {revealedAnswer.choices && revealedAnswer.choices.length > 0 ? (
+                  <div className="mt-2.5 space-y-2">
+                    {revealedAnswer.choices.map((ch, idx) => (
+                      <div
                         key={ch.id}
-                        type="button"
-                        aria-pressed={isSelected}
-                        onClick={() => setSelectedHintId(ch.id)}
-                        className={`flex min-h-[44px] w-full cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-1 ${
-                          isSelected
-                            ? "border-teal-600 bg-teal-50 font-semibold text-teal-950"
-                            : "border-slate-200 bg-white text-slate-800 hover:bg-slate-100"
+                        className={`flex items-center gap-3 rounded-xl border px-3.5 py-2.5 text-sm ${
+                          ch.is_correct
+                            ? "border-emerald-500 bg-emerald-100 font-bold text-emerald-950"
+                            : selectedHintId === ch.id
+                              ? "border-rose-300 bg-rose-50 text-rose-900 line-through"
+                              : "border-slate-200 bg-white/80 text-slate-600"
                         }`}
                       >
-                        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-800">
-                          {choiceLetter}
+                        <span
+                          className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                            ch.is_correct
+                              ? "bg-emerald-600 text-white"
+                              : "bg-slate-200 text-slate-700"
+                          }`}
+                        >
+                          {String.fromCharCode(65 + idx)}
                         </span>
                         <span>{ch.text}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-1.5 text-base font-bold text-emerald-950">
+                    {revealedAnswer.answer_text}
+                  </p>
+                )}
+
+                {revealedAnswer.explanation ? (
+                  <div className="mt-3 border-t border-emerald-200/80 pt-3 text-xs leading-relaxed text-emerald-950">
+                    <strong className="font-bold">
+                      {vi.study.review.explanationTitle}
+                    </strong>{" "}
+                    {revealedAnswer.explanation}
+                  </div>
+                ) : null}
               </div>
-            )}
-          </div>
-        ) : null}
 
-        {/* Nút Hiện đáp án hoặc Khung Đáp án & 4 nút tự chấm FSRS */}
-        {!revealedAnswer ? (
-          <div className="mt-6 pt-2">
-            <Button
-              type="button"
-              disabled={isRevealingAnswer}
-              onClick={() => void handleRevealAnswer()}
-              className="min-h-[52px] w-full text-base font-bold shadow-sm"
-            >
-              {isRevealingAnswer
-                ? vi.study.review.revealingAnswerStatus
-                : vi.study.review.revealAnswerButton}
-            </Button>
-          </div>
-        ) : (
-          <div
-            role="region"
-            aria-live="polite"
-            aria-label="Đáp án và tự đánh giá độ nhớ"
-            className="mt-6 space-y-5 border-t border-slate-200 pt-6"
-          >
-            {/* Đáp án đúng */}
-            <div className="rounded-2xl border border-emerald-300 bg-emerald-50/70 p-4">
-              <p className="text-xs font-bold uppercase tracking-wider text-emerald-900">
-                {vi.study.review.correctAnswerTitle}
-              </p>
-
-              {revealedAnswer.choices && revealedAnswer.choices.length > 0 ? (
-                <div className="mt-2.5 space-y-2">
-                  {revealedAnswer.choices.map((ch, idx) => (
-                    <div
-                      key={ch.id}
-                      className={`flex items-center gap-3 rounded-xl border px-3.5 py-2.5 text-sm ${
-                        ch.is_correct
-                          ? "border-emerald-500 bg-emerald-100 font-bold text-emerald-950"
-                          : selectedHintId === ch.id
-                            ? "border-rose-300 bg-rose-50 text-rose-900 line-through"
-                            : "border-slate-200 bg-white/80 text-slate-600"
-                      }`}
-                    >
-                      <span
-                        className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-                          ch.is_correct
-                            ? "bg-emerald-600 text-white"
-                            : "bg-slate-200 text-slate-700"
-                        }`}
-                      >
-                        {String.fromCharCode(65 + idx)}
-                      </span>
-                      <span>{ch.text}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="mt-1.5 text-base font-bold text-emerald-950">
-                  {revealedAnswer.answer_text}
+              {/* 4 nút tự chấm FSRS: Quên / Khó / Tốt / Dễ với biểu tượng + màu riêng + nhãn chữ + phím tắt */}
+              <div>
+                <p className="mb-3 text-center text-xs font-bold text-slate-700">
+                  {vi.study.review.ratePrompt}
                 </p>
-              )}
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <button
+                    type="button"
+                    disabled={isSubmittingRating}
+                    onClick={() => void handleRateCard("again")}
+                    className="flex min-h-[66px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-b-4 border-rose-400 bg-rose-50 px-3 py-2 text-rose-950 transition-all hover:bg-rose-100 active:border-b-2 active:translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 disabled:opacity-50 motion-reduce:transition-none"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span aria-hidden="true" className="text-base font-bold text-rose-600">✕</span>
+                      <span className="text-sm font-black">
+                        {vi.study.review.ratings.again}
+                      </span>
+                      <kbd className="rounded bg-rose-200/80 px-1 text-[10px] font-bold text-rose-900">
+                        1
+                      </kbd>
+                    </div>
+                    <span className="mt-0.5 text-[11px] font-semibold text-rose-800">
+                      {currentIntervals?.again}
+                    </span>
+                  </button>
 
-              {revealedAnswer.explanation ? (
-                <div className="mt-3 border-t border-emerald-200/80 pt-3 text-xs leading-relaxed text-emerald-950">
-                  <strong className="font-bold">
-                    {vi.study.review.explanationTitle}
-                  </strong>{" "}
-                  {revealedAnswer.explanation}
+                  <button
+                    type="button"
+                    disabled={isSubmittingRating}
+                    onClick={() => void handleRateCard("hard")}
+                    className="flex min-h-[66px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-b-4 border-amber-400 bg-amber-50 px-3 py-2 text-amber-950 transition-all hover:bg-amber-100 active:border-b-2 active:translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 disabled:opacity-50 motion-reduce:transition-none"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span aria-hidden="true" className="text-base font-bold text-amber-600">⚡</span>
+                      <span className="text-sm font-black">
+                        {vi.study.review.ratings.hard}
+                      </span>
+                      <kbd className="rounded bg-amber-200/80 px-1 text-[10px] font-bold text-amber-900">
+                        2
+                      </kbd>
+                    </div>
+                    <span className="mt-0.5 text-[11px] font-semibold text-amber-800">
+                      {currentIntervals?.hard}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isSubmittingRating}
+                    onClick={() => void handleRateCard("good")}
+                    className="flex min-h-[66px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-b-4 border-sky-400 bg-sky-50 px-3 py-2 text-sky-950 transition-all hover:bg-sky-100 active:border-b-2 active:translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-600 focus-visible:ring-offset-2 disabled:opacity-50 motion-reduce:transition-none"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span aria-hidden="true" className="text-base font-bold text-sky-600">✓</span>
+                      <span className="text-sm font-black">
+                        {vi.study.review.ratings.good}
+                      </span>
+                      <kbd className="rounded bg-sky-200/80 px-1 text-[10px] font-bold text-sky-900">
+                        3
+                      </kbd>
+                    </div>
+                    <span className="mt-0.5 text-[11px] font-semibold text-sky-800">
+                      {currentIntervals?.good}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isSubmittingRating}
+                    onClick={() => void handleRateCard("easy")}
+                    className="flex min-h-[66px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-b-4 border-emerald-500 bg-emerald-50 px-3 py-2 text-emerald-950 transition-all hover:bg-emerald-100 active:border-b-2 active:translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:opacity-50 motion-reduce:transition-none"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span aria-hidden="true" className="text-base font-bold text-emerald-600">★</span>
+                      <span className="text-sm font-black">
+                        {vi.study.review.ratings.easy}
+                      </span>
+                      <kbd className="rounded bg-emerald-200/80 px-1 text-[10px] font-bold text-emerald-900">
+                        4
+                      </kbd>
+                    </div>
+                    <span className="mt-0.5 text-[11px] font-semibold text-emerald-800">
+                      {currentIntervals?.easy}
+                    </span>
+                  </button>
                 </div>
-              ) : null}
-            </div>
-
-            {/* 4 nút tự chấm FSRS: Quên / Khó / Tốt / Dễ kèm khoảng lặp kế tiếp */}
-            <div>
-              <p className="mb-3 text-center text-xs font-bold text-slate-700">
-                {vi.study.review.ratePrompt}
-              </p>
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                <button
-                  type="button"
-                  disabled={isSubmittingRating}
-                  onClick={() => void handleRateCard("again")}
-                  className="flex min-h-[60px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-rose-300 bg-rose-50 px-3 py-2.5 text-rose-950 transition-colors hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 disabled:opacity-50"
-                >
-                  <span className="text-sm font-extrabold">
-                    {vi.study.review.ratings.again}
-                  </span>
-                  <span className="mt-0.5 text-[11px] font-medium text-rose-800">
-                    {currentIntervals?.again}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  disabled={isSubmittingRating}
-                  onClick={() => void handleRateCard("hard")}
-                  className="flex min-h-[60px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-amber-300 bg-amber-50 px-3 py-2.5 text-amber-950 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 disabled:opacity-50"
-                >
-                  <span className="text-sm font-extrabold">
-                    {vi.study.review.ratings.hard}
-                  </span>
-                  <span className="mt-0.5 text-[11px] font-medium text-amber-800">
-                    {currentIntervals?.hard}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  disabled={isSubmittingRating}
-                  onClick={() => void handleRateCard("good")}
-                  className="flex min-h-[60px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-teal-400 bg-teal-50 px-3 py-2.5 text-teal-950 transition-colors hover:bg-teal-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 disabled:opacity-50"
-                >
-                  <span className="text-sm font-extrabold">
-                    {vi.study.review.ratings.good}
-                  </span>
-                  <span className="mt-0.5 text-[11px] font-medium text-teal-800">
-                    {currentIntervals?.good}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  disabled={isSubmittingRating}
-                  onClick={() => void handleRateCard("easy")}
-                  className="flex min-h-[60px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-emerald-400 bg-emerald-50 px-3 py-2.5 text-emerald-950 transition-colors hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:opacity-50"
-                >
-                  <span className="text-sm font-extrabold">
-                    {vi.study.review.ratings.easy}
-                  </span>
-                  <span className="mt-0.5 text-[11px] font-medium text-emerald-800">
-                    {currentIntervals?.easy}
-                  </span>
-                </button>
               </div>
-            </div>
-          </div>
-        )}
-      </article>
-    </div>
+            </m.div>
+          )}
+        </m.article>
+      </div>
+    </LazyMotion>
   );
 }

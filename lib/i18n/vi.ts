@@ -1088,6 +1088,10 @@ export const vi = {
     mergeSuccessSuffix: "lượt ôn vào tài khoản của bạn!",
     mergeInvalidCodeError:
       "Mã khôi phục không tồn tại hoặc đã được gộp trước đó.",
+    motionSectionTitle: "Giao diện & Hiệu ứng chuyển động",
+    reduceMotionLabel: "Tắt hiệu ứng chuyển động mạnh (Giảm chuyển động)",
+    reduceMotionDesc:
+      "Chuyển toàn bộ hoạt ảnh thẻ bài, lật trang và hiệu ứng xúc giác sang hiển thị trực tiếp hoặc làm mờ nhẹ, tối ưu cho mắt và thiết bị di động tầm trung.",
     dangerSectionTitle: "Xóa tài khoản & toàn bộ dữ liệu",
     dangerSectionDesc:
       "Hành động này không thể hoàn tác. Toàn bộ bộ câu hỏi, file đã tải lên trong Storage, lịch sử ôn tập FSRS và bài kiểm tra của bạn sẽ bị xóa vĩnh viễn.",

@@ -232,7 +232,7 @@ export default async function DashboardPage(props: {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div data-space={isTeacher ? "workspace" : "study"} className="min-h-screen bg-[var(--background)] text-[var(--foreground)] transition-colors duration-200">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
           <div className="flex items-center gap-2.5">
@@ -278,51 +278,57 @@ export default async function DashboardPage(props: {
           </div>
         ) : null}
 
-        <section className="flex flex-col justify-between gap-4 rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50/80 via-white to-sky-50/60 p-5 sm:flex-row sm:items-center sm:p-6">
-          <div className="space-y-1">
-            <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">
+        <section className="relative overflow-hidden flex flex-col justify-between gap-4 rounded-3xl bg-[var(--space-hero-bg)] text-[var(--space-hero-fg)] p-6 sm:flex-row sm:items-center sm:p-7 shadow-md">
+          <div aria-hidden="true" className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 rounded-full bg-white/10 blur-xl" />
+          <div className="relative space-y-1">
+            <h1 className="text-xl font-black sm:text-2xl tracking-tight text-white">
               {vi.dashboard.greetingPrefix} {displayName}!
             </h1>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-white/90 font-medium">
               {isTeacher ? vi.dashboard.subtitle : vi.studentDashboard.subtitle}
             </p>
-            <p className="pt-1 text-xs font-medium text-teal-800">
+            <p className="pt-1 text-xs font-semibold text-white/95">
               {vi.dashboard.aiQuotaRemainingPrefix}{" "}
-              <strong>
+              <strong className="underline underline-offset-2">
                 {quotaStatus.remainingToday}/{quotaStatus.dailyLimit}
               </strong>{" "}
               {vi.dashboard.aiQuotaUnit}
             </p>
           </div>
 
-          <CreateSetButton />
+          <div className="relative">
+            <CreateSetButton />
+          </div>
         </section>
 
         {!isTeacher ? (
-          <section className="rounded-3xl border border-teal-200 bg-white p-5 shadow-2xs sm:p-6">
+          <section className="rounded-3xl border-2 border-[var(--space-border-strong)] bg-[var(--space-surface)] p-5 shadow-sm transition-all sm:p-7">
             <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <h2 className="text-base font-bold text-slate-900 sm:text-lg">
-                  {vi.studentDashboard.todayStudyTitle}
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-[var(--space-surface-muted)] px-3 py-0.5 text-xs font-extrabold text-[var(--space-primary)]">
+                  <span>✨ {vi.studentDashboard.todayStudyTitle}</span>
+                </div>
+                <h2 className="text-lg font-black text-[var(--heading)] sm:text-xl">
+                  {studentTodayDueCount > 0
+                    ? `Hôm nay bạn có ${studentTodayDueCount} thẻ đến hạn ôn`
+                    : vi.studentDashboard.allCaughtUpNotice}
                 </h2>
-                <p className="mt-1 text-xs text-slate-600">
-                  {vi.study.overview.streakLabel}:{" "}
-                  <strong className="text-amber-800">
-                    🔥 {studentStreakDays} {vi.study.overview.daysUnit}
-                  </strong>{" "}
-                  • {vi.study.overview.retentionRateLabel}{" "}
-                  <strong className="text-emerald-700">
-                    {studentRetentionRate}%
-                  </strong>
-                </p>
+                <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+                  <span className="inline-flex items-center gap-1 rounded-xl border border-[var(--space-reward-border)] bg-[var(--space-reward-bg)] px-2.5 py-1 font-black text-[var(--space-reward-fg)] shadow-2xs">
+                    🔥 {studentStreakDays} {vi.study.overview.daysUnit} streak
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-xl border border-emerald-300 bg-emerald-50 px-2.5 py-1 font-black text-emerald-900 shadow-2xs">
+                    🎯 {studentRetentionRate}% ghi nhớ
+                  </span>
+                </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2 text-center">
-                  <span className="block text-[11px] font-semibold text-amber-900">
+                <div className="min-w-[110px] rounded-2xl border-2 border-[var(--space-reward-border)] bg-[var(--space-reward-bg)] px-4 py-2.5 text-center shadow-xs">
+                  <span className="block text-[11px] font-bold uppercase tracking-wider text-[var(--space-reward-fg)]">
                     {vi.studentDashboard.dueCardsLabel}
                   </span>
-                  <span className="text-xl font-extrabold text-amber-950">
+                  <span className="text-2xl font-black text-[var(--space-reward-fg)] sm:text-3xl">
                     {studentTodayDueCount}
                   </span>
                 </div>
@@ -330,15 +336,15 @@ export default async function DashboardPage(props: {
                 {studentFirstStudySetId && studentTodayDueCount > 0 ? (
                   <Link
                     href={`/dashboard/sets/${studentFirstStudySetId}/study/review`}
-                    className="inline-flex min-h-[48px] items-center justify-center rounded-2xl bg-teal-600 px-5 py-2.5 text-sm font-bold text-white shadow-2xs hover:bg-teal-700"
+                    className="inline-flex min-h-[50px] items-center justify-center rounded-2xl bg-[var(--space-accent)] text-[var(--space-accent-fg)] px-6 py-2.5 text-base font-extrabold shadow-md transition-transform hover:brightness-110 active:brightness-95 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100"
                   >
-                    {vi.studentDashboard.startReviewSetPrefix}{" "}
+                    🚀 {vi.studentDashboard.startReviewSetPrefix}{" "}
                     {setTitleById.get(studentFirstStudySetId) ??
                       vi.study.overview.startReviewButton}
                   </Link>
                 ) : sets.length > 0 ? (
-                  <span className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-800">
-                    {vi.studentDashboard.allCaughtUpNotice}
+                  <span className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-bold text-emerald-800 shadow-2xs">
+                    🎉 {vi.studentDashboard.allCaughtUpNotice}
                   </span>
                 ) : null}
               </div>
@@ -348,7 +354,7 @@ export default async function DashboardPage(props: {
               <div
                 role="region"
                 aria-label="Biểu đồ lịch sử ôn tập 14 ngày qua"
-                className="mt-4 flex h-24 items-end justify-between gap-1 border-t border-slate-100 pt-3"
+                className="mt-5 flex h-24 items-end justify-between gap-1.5 border-t border-teal-100/70 pt-4"
               >
                 {studentHistory14Days.map((day) => {
                   const maxRev = Math.max(
@@ -363,19 +369,19 @@ export default async function DashboardPage(props: {
                     <div
                       key={day.dateKey}
                       aria-label={`${day.label}: ${day.totalReviews} lượt ôn`}
-                      className="flex flex-1 flex-col items-center gap-1"
+                      className="flex flex-1 flex-col items-center gap-1.5"
                     >
-                      <div className="flex h-14 w-full items-end rounded bg-slate-100 p-0.5">
+                      <div className="flex h-14 w-full items-end rounded-lg bg-teal-50/80 p-0.5">
                         <div
                           style={{ height: `${pct}%` }}
-                          className={`w-full rounded transition-all motion-reduce:transition-none ${
+                          className={`w-full rounded-md transition-all motion-reduce:transition-none ${
                             day.totalReviews > 0
                               ? "bg-teal-600"
                               : "bg-slate-200"
                           }`}
                         />
                       </div>
-                      <span className="text-[9px] font-medium text-slate-500">
+                      <span className="text-[10px] font-medium text-slate-500">
                         {day.label}
                       </span>
                     </div>
@@ -451,7 +457,7 @@ export default async function DashboardPage(props: {
                     href={`/dashboard/sets/${setItem.id}`}
                     className="block rounded-2xl focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-none"
                   >
-                    <Card className="h-full transition-shadow hover:border-teal-300 hover:shadow-md">
+                    <Card className="h-full rounded-3xl border-slate-200/90 transition-all hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none">
                       <CardHeader className="pb-3">
                         <CardTitle className="line-clamp-2 text-base">
                           {setItem.title}
@@ -525,7 +531,7 @@ export default async function DashboardPage(props: {
                     href={`/dashboard/exams/${exam.id}`}
                     className="block rounded-2xl focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:outline-none"
                   >
-                    <Card className="h-full transition-shadow hover:border-teal-300 hover:shadow-md">
+                    <Card className="h-full rounded-3xl border-slate-200/90 transition-all hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none">
                       <CardHeader className="pb-3">
                         <div className="flex items-start justify-between gap-2">
                           <CardTitle className="line-clamp-2 text-base">

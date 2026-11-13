@@ -34,7 +34,7 @@ export function PrintExamPreviewWorkspace({
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-4 py-6">
+    <div data-space="workspace" className="mx-auto max-w-5xl space-y-6 px-4 py-6">
       {/* Thanh điều hướng và công cụ tải file (ẩn khi in PDF) */}
       <div className="no-print space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-2xs">
         <div className="flex flex-wrap items-center justify-between gap-3">

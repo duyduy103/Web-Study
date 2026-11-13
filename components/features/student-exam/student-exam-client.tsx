@@ -488,7 +488,7 @@ export function StudentExamClient({
       totalCount > 0 ? Math.round((answeredCount / totalCount) * 100) : 0;
 
     return (
-      <div className="mx-auto max-w-2xl space-y-4 px-3 py-4 pb-20 sm:px-4 sm:py-6">
+      <div data-space="study" className="mx-auto max-w-2xl space-y-4 px-3 py-4 pb-20 sm:px-4 sm:py-6">
         {/* Thanh trạng thái cố định đầu trang */}
         <header className="sticky top-2 z-30 rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-sm backdrop-blur-xs">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -619,8 +619,8 @@ export function StudentExamClient({
                       }
                       className={`flex min-h-[52px] w-full cursor-pointer items-center gap-3 rounded-2xl border p-3.5 text-left text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 sm:text-base ${
                         selected
-                          ? "border-teal-600 bg-teal-50/90 text-teal-950 ring-2 ring-teal-600/20"
-                          : "border-slate-200 bg-white text-slate-800 hover:border-teal-300 hover:bg-slate-50"
+                          ? "border-2 border-b-4 border-teal-600 bg-teal-50/90 text-teal-950 font-bold shadow-xs active:border-b-2 active:translate-y-0.5"
+                          : "border border-b-3 border-slate-200 bg-white text-slate-800 hover:border-teal-300 hover:bg-slate-50 active:translate-y-0.5"
                       }`}
                     >
                       <span
@@ -953,7 +953,7 @@ export function StudentExamClient({
             <Button
               type="submit"
               disabled={isStarting}
-              className="min-h-[48px] w-full text-base font-bold"
+              className="min-h-[48px] w-full rounded-2xl text-base font-bold shadow-xs active:scale-[0.98] transition-transform motion-reduce:transition-none motion-reduce:active:scale-100"
             >
               {isStarting
                 ? vi.studentExam.entry.startingButton

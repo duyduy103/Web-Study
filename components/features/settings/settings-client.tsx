@@ -42,6 +42,35 @@ export function SettingsClient({
   const [isDeletingAccount, setIsDeletingAccount] = React.useState(false);
   const [deleteError, setDeleteError] = React.useState<string | null>(null);
 
+  const [reduceMotion, setReduceMotion] = React.useState(false);
+
+  React.useEffect(() => {
+    try {
+      const stored = localStorage.getItem("memoquiz_reduce_motion");
+      if (stored === "true") {
+        setReduceMotion(true);
+        document.documentElement.setAttribute("data-reduce-motion", "true");
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  function handleToggleReduceMotion(checked: boolean) {
+    setReduceMotion(checked);
+    try {
+      if (checked) {
+        localStorage.setItem("memoquiz_reduce_motion", "true");
+        document.documentElement.setAttribute("data-reduce-motion", "true");
+      } else {
+        localStorage.removeItem("memoquiz_reduce_motion");
+        document.documentElement.removeAttribute("data-reduce-motion");
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault();
     const clean = displayName.trim();
@@ -362,7 +391,32 @@ export function SettingsClient({
         </form>
       </section>
 
-      {/* 4. Xóa tài khoản & toàn bộ dữ liệu */}
+      {/* 4. Tùy chọn chuyển động & trợ năng */}
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-base font-bold text-slate-900">
+          {vi.settings.motionSectionTitle}
+        </h2>
+        <div className="mt-4">
+          <label className="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 transition-colors hover:bg-slate-100/70">
+            <input
+              type="checkbox"
+              checked={reduceMotion}
+              onChange={(e) => handleToggleReduceMotion(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+            />
+            <div className="space-y-0.5">
+              <span className="block text-sm font-bold text-slate-900">
+                {vi.settings.reduceMotionLabel}
+              </span>
+              <span className="block text-xs leading-relaxed text-slate-600">
+                {vi.settings.reduceMotionDesc}
+              </span>
+            </div>
+          </label>
+        </div>
+      </section>
+
+      {/* 5. Xóa tài khoản & toàn bộ dữ liệu */}
       <section className="rounded-3xl border border-red-200 bg-red-50/40 p-6 shadow-sm">
         <h2 className="text-base font-bold text-red-900">
           {vi.settings.dangerSectionTitle}

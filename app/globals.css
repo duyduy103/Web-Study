@@ -1,8 +1,106 @@
 @import "tailwindcss";
 
-:root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+/* =========================================================================
+   BẢNG MÀU A: Deep Spruce Teal & Warm Amber (Mặc định)
+   Nguyên tắc 60-30-10:
+   - 60% Nền canvas ấm có sắc nhẹ: #F4F7F5 (Workspace) / #E8F3F0 (Learn/Study)
+   - 30% Chủ đạo đậm: #0A4F43 (Spruce Teal)
+   - 10% Nhấn tương phản mạnh: #C2410C (Warm Rust Amber) cho nút chính/tiến độ
+   ========================================================================= */
+:root,
+html[data-palette="a"] {
+  --palette-name: "Spruce & Amber";
+  --background: #f4f7f5;
+  --foreground: #142823;
+  --heading: #062b25;
+  --muted: #48635c;
+  
+  --space-surface: #ffffff;
+  --space-surface-muted: #eaf1ee;
+  --space-border: #cad9d2;
+  --space-border-strong: #8faea2;
+  
+  --space-primary: #0a4f43;
+  --space-primary-fg: #ffffff;
+  --space-primary-hover: #073b32;
+  --space-primary-ring: rgba(10, 79, 67, 0.25);
+  
+  --space-accent: #c2410c;
+  --space-accent-fg: #ffffff;
+  --space-accent-hover: #9a3412;
+  --space-accent-ring: rgba(194, 65, 12, 0.25);
+  
+  --space-reward-bg: #fffbeb;
+  --space-reward-border: #fcd34d;
+  --space-reward-fg: #b45309;
+
+  --space-hero-bg: linear-gradient(135deg, #073830 0%, #0d5448 60%, #15695a 100%);
+  --space-hero-fg: #ffffff;
+  --space-shadow-card: 0 4px 16px -2px rgba(10, 79, 67, 0.08), 0 2px 6px -1px rgba(10, 79, 67, 0.04);
+}
+
+:root [data-space="study"],
+:root [data-space="learn"],
+html[data-palette="a"] [data-space="study"],
+html[data-palette="a"] [data-space="learn"] {
+  --background: #e8f3f0;
+  --foreground: #0c2b24;
+  --heading: #05241e;
+  --space-surface: #ffffff;
+  --space-surface-muted: #dcf0ea;
+  --space-border: #bcd5cb;
+  --space-border-strong: #78a896;
+  --space-shadow-card: 0 10px 25px -4px rgba(10, 79, 67, 0.12), 0 6px 12px -2px rgba(10, 79, 67, 0.06);
+}
+
+/* =========================================================================
+   BẢNG MÀU B: Cosmic Indigo & Vibrant Coral
+   Nguyên tắc 60-30-10:
+   - 60% Nền canvas có sắc tím sương nhẹ: #F4F3FB (Workspace) / #EAE7FD (Learn/Study)
+   - 30% Chủ đạo đậm: #4338CA (Royal Indigo)
+   - 10% Nhấn tương phản mạnh: #BE123C (Vibrant Sunset Coral) cho nút chính/tiến độ
+   ========================================================================= */
+html[data-palette="b"] {
+  --palette-name: "Indigo & Coral";
+  --background: #f4f3fb;
+  --foreground: #1c1844;
+  --heading: #120e3a;
+  --muted: #58537f;
+  
+  --space-surface: #ffffff;
+  --space-surface-muted: #eae7fd;
+  --space-border: #dcd6f7;
+  --space-border-strong: #a79be8;
+  
+  --space-primary: #4338ca;
+  --space-primary-fg: #ffffff;
+  --space-primary-hover: #3730a3;
+  --space-primary-ring: rgba(67, 56, 202, 0.25);
+  
+  --space-accent: #be123c;
+  --space-accent-fg: #ffffff;
+  --space-accent-hover: #9f1239;
+  --space-accent-ring: rgba(190, 18, 60, 0.25);
+  
+  --space-reward-bg: #fff1f2;
+  --space-reward-border: #fca5a5;
+  --space-reward-fg: #be123c;
+
+  --space-hero-bg: linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%);
+  --space-hero-fg: #ffffff;
+  --space-shadow-card: 0 4px 16px -2px rgba(67, 56, 202, 0.08), 0 2px 6px -1px rgba(67, 56, 202, 0.04);
+}
+
+html[data-palette="b"] [data-space="study"],
+html[data-palette="b"] [data-space="learn"] {
+  --background: #eae7fd;
+  --foreground: #191444;
+  --heading: #0f0b32;
+  --space-surface: #ffffff;
+  --space-surface-muted: #ddd8fc;
+  --space-border: #cfc7f5;
+  --space-border-strong: #9686e0;
+  --space-shadow-card: 0 10px 25px -4px rgba(67, 56, 202, 0.12), 0 6px 12px -2px rgba(67, 56, 202, 0.06);
 }
 
 body {
@@ -13,7 +111,25 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Tôn trọng người dùng giảm chuyển động */
+/* 3D Flashcard flip helper classes */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+/* Tôn trọng người dùng giảm chuyển động (tự động hệ thống hoặc tùy chọn thủ công trong Cài đặt) */
 @media (prefers-reduced-motion: reduce) {
   *,
   ::before,
@@ -23,6 +139,31 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+
+  .transform-style-3d {
+    transform-style: flat !important;
+  }
+
+  .rotate-y-180 {
+    transform: none !important;
+  }
+}
+
+html[data-reduce-motion="true"] *,
+html[data-reduce-motion="true"] ::before,
+html[data-reduce-motion="true"] ::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+html[data-reduce-motion="true"] .transform-style-3d {
+  transform-style: flat !important;
+}
+
+html[data-reduce-motion="true"] .rotate-y-180 {
+  transform: none !important;
 }
 
 /* Đảm bảo vùng bấm tối thiểu cho tương tác di động */

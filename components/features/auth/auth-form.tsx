@@ -294,9 +294,25 @@ export function AuthForm({ mode }: AuthFormProps) {
   }
 
   return (
-    <Card className="w-full max-w-md border-slate-200/90 shadow-sm">
-      <CardHeader className="space-y-2 text-center">
-        <div className="mx-auto inline-flex items-center gap-2 rounded-full bg-teal-50 px-3.5 py-1 text-xs font-semibold text-teal-800">
+    <Card className="w-full max-w-md rounded-3xl border border-slate-200/90 bg-white shadow-md">
+      <CardHeader className="space-y-3 text-center pb-4">
+        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-500 text-white shadow-xs">
+          <svg
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M13 10V3L4 14h7v7l9-11h-7z"
+            />
+          </svg>
+        </div>
+        <div className="inline-flex items-center gap-2 self-center rounded-full bg-teal-50 px-3.5 py-1 text-xs font-semibold text-teal-800">
           <span>{vi.app.name}</span>
           <span>•</span>
           <span>
@@ -307,7 +323,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                 : vi.roles.studentLabel}
           </span>
         </div>
-        <CardTitle className="text-2xl font-bold text-slate-900">
+        <CardTitle className="text-2xl font-bold tracking-tight text-slate-900">
           {isLogin ? vi.auth.loginTitle : vi.auth.signupTitle}
         </CardTitle>
         <CardDescription className="text-sm text-slate-600">
@@ -653,9 +669,10 @@ export function AuthForm({ mode }: AuthFormProps) {
 
           <Button
             type="submit"
+            variant="accent"
             size="lg"
             disabled={isPending}
-            className="w-full min-h-[44px]"
+            className="w-full min-h-[48px] rounded-2xl text-base font-bold shadow-md active:scale-[0.98] transition-transform motion-reduce:transition-none motion-reduce:active:scale-100"
           >
             {isPending
               ? isLogin

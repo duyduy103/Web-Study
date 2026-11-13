@@ -1,8 +1,11 @@
+"use client";
+
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
 export type ButtonVariant =
   | "default"
+  | "accent"
   | "outline"
   | "ghost"
   | "secondary"
@@ -17,16 +20,18 @@ export interface ButtonProps
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
+  accent:
+    "bg-[var(--space-accent)] text-[var(--space-accent-fg)] shadow-sm hover:brightness-110 active:brightness-95 active:scale-[0.98] focus-visible:ring-[var(--space-accent)] transition-all",
   default:
-    "bg-teal-600 text-white shadow-xs hover:bg-teal-700 active:bg-teal-800 focus-visible:ring-teal-600",
+    "bg-[var(--space-primary)] text-[var(--space-primary-fg)] shadow-xs hover:brightness-110 active:brightness-95 active:scale-[0.98] focus-visible:ring-[var(--space-primary)] transition-all",
   secondary:
-    "bg-teal-50 text-teal-900 hover:bg-teal-100 active:bg-teal-200 focus-visible:ring-teal-600",
+    "bg-[var(--space-surface-muted)] text-[var(--foreground)] border border-[var(--space-border)] hover:brightness-95 active:brightness-90 active:scale-[0.98] focus-visible:ring-[var(--space-primary)] transition-all",
   outline:
-    "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 active:bg-slate-100 focus-visible:ring-teal-600",
+    "border-2 border-[var(--space-border)] bg-[var(--space-surface)] text-[var(--foreground)] hover:bg-[var(--space-surface-muted)] active:scale-[0.98] focus-visible:ring-[var(--space-primary)] transition-all",
   ghost:
-    "text-slate-700 hover:bg-slate-100 hover:text-slate-900 active:bg-slate-200 focus-visible:ring-teal-600",
+    "text-[var(--foreground)] hover:bg-[var(--space-surface-muted)] active:bg-[var(--space-surface-muted)] focus-visible:ring-[var(--space-primary)] transition-colors",
   destructive:
-    "bg-red-600 text-white shadow-xs hover:bg-red-700 active:bg-red-800 focus-visible:ring-red-600",
+    "bg-red-600 text-white shadow-xs hover:bg-red-700 active:bg-red-800 active:scale-[0.98] focus-visible:ring-red-600 transition-all",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {

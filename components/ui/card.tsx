@@ -1,3 +1,5 @@
+"use client";
+
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
@@ -8,7 +10,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-xs",
+        "rounded-3xl border border-[var(--space-border,#cad9d2)] bg-[var(--space-surface,#ffffff)] text-[var(--foreground,#142823)] shadow-[var(--space-shadow-card,0_4px_16px_rgba(0,0,0,0.06))] transition-shadow",
         className
       )}
       {...props}
@@ -34,7 +36,7 @@ export function CardTitle({
 }: React.HTMLAttributes<HTMLHeadingElement>) {
   return (
     <h2
-      className={cn("text-xl leading-tight font-semibold tracking-tight text-slate-900", className)}
+      className={cn("text-xl leading-tight font-extrabold tracking-tight text-[var(--heading,#062b25)]", className)}
       {...props}
     />
   );
@@ -46,7 +48,7 @@ export function CardDescription({
 }: React.HTMLAttributes<HTMLParagraphElement>) {
   return (
     <p
-      className={cn("text-sm text-slate-600", className)}
+      className={cn("text-sm font-medium text-[var(--muted,#48635c)]", className)}
       {...props}
     />
   );
