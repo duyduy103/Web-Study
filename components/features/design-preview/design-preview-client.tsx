@@ -332,7 +332,13 @@ export function DesignPreviewClient() {
             </h4>
             <div data-space="learn" className="space-y-3 rounded-3xl bg-[var(--background)] p-3 border border-[var(--space-border)]">
               {/* Hero Banner */}
-              <div className="relative overflow-hidden rounded-2xl bg-[var(--space-hero-bg)] text-[var(--space-hero-fg)] p-4 shadow-sm">
+              <div
+                style={{
+                  backgroundColor: "var(--space-primary)",
+                  backgroundImage: "var(--space-hero-bg)",
+                }}
+                className="space-hero-banner relative overflow-hidden rounded-2xl p-4 shadow-sm"
+              >
                 <span className="text-[10px] font-bold uppercase tracking-wider opacity-90">Hôm nay cần ôn</span>
                 <p className="text-base font-black mt-0.5">Chào mừng Minh Anh!</p>
                 <p className="text-xs opacity-90 mt-0.5">8 thẻ đang chờ bạn ôn lại</p>

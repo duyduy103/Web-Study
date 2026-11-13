@@ -158,6 +158,14 @@ html[data-reduce-motion="true"] ::after {
   scroll-behavior: auto !important;
 }
 
+/* Hero Banner: Đảm bảo nền màu chủ đạo đậm + gradient luôn hiển thị, tương phản WCAG AAA với chữ trắng */
+.space-hero-banner {
+  background-color: var(--space-primary);
+  background-image: var(--space-hero-bg);
+  background-size: cover;
+  color: var(--space-hero-fg, #ffffff);
+}
+
 html[data-reduce-motion="true"] .transform-style-3d {
   transform-style: flat !important;
 }

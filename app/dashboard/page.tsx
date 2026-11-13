@@ -278,7 +278,13 @@ export default async function DashboardPage(props: {
           </div>
         ) : null}
 
-        <section className="relative overflow-hidden flex flex-col justify-between gap-4 rounded-3xl bg-[var(--space-hero-bg)] text-[var(--space-hero-fg)] p-6 sm:flex-row sm:items-center sm:p-7 shadow-md">
+        <section
+          style={{
+            backgroundColor: "var(--space-primary)",
+            backgroundImage: "var(--space-hero-bg)",
+          }}
+          className="space-hero-banner relative overflow-hidden flex flex-col justify-between gap-4 rounded-3xl p-6 sm:flex-row sm:items-center sm:p-7 shadow-md"
+        >
           <div aria-hidden="true" className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 rounded-full bg-white/10 blur-xl" />
           <div className="relative space-y-1">
             <h1 className="text-xl font-black sm:text-2xl tracking-tight text-white">
