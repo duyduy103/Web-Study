@@ -16,6 +16,9 @@ export type QuestionType = "mcq" | "true_false" | "cloze" | "short_answer";
 export type QuestionStatus = "draft" | "approved" | "archived";
 export type AttemptStatus = "in_progress" | "submitted" | "expired";
 export type ExamMode = "online" | "print" | "self";
+export type FeedbackType = "bug" | "idea" | "question" | "upgrade_request" | "other";
+export type FeedbackStatus = "new" | "in_progress" | "resolved" | "ignored";
+export type FeedbackPriority = "low" | "medium" | "high" | "urgent";
 
 export type Database = {
   public: {
@@ -799,6 +802,111 @@ export type Database = {
         };
         Relationships: [];
       };
+      admins: {
+        Row: {
+          user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          user_id: string;
+          created_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      admin_audit_log: {
+        Row: {
+          id: string;
+          admin_id: string;
+          action: string;
+          target_type: string;
+          target_id: string;
+          before_state: Json | null;
+          after_state: Json | null;
+          reason: string | null;
+          ip_address: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          admin_id: string;
+          action: string;
+          target_type: string;
+          target_id: string;
+          before_state?: Json | null;
+          after_state?: Json | null;
+          reason?: string | null;
+          ip_address?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          admin_id?: string;
+          action?: string;
+          target_type?: string;
+          target_id?: string;
+          before_state?: Json | null;
+          after_state?: Json | null;
+          reason?: string | null;
+          ip_address?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      feedback: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          type: FeedbackType;
+          content: string;
+          contact_email: string | null;
+          context_meta: Json;
+          admin_notes: string | null;
+          public_response: string | null;
+          public_response_at: string | null;
+          user_read_at: string | null;
+          status: FeedbackStatus;
+          priority: FeedbackPriority;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          type: FeedbackType;
+          content: string;
+          contact_email?: string | null;
+          context_meta?: Json;
+          admin_notes?: string | null;
+          public_response?: string | null;
+          public_response_at?: string | null;
+          user_read_at?: string | null;
+          status?: FeedbackStatus;
+          priority?: FeedbackPriority;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          type?: FeedbackType;
+          content?: string;
+          contact_email?: string | null;
+          context_meta?: Json;
+          admin_notes?: string | null;
+          public_response?: string | null;
+          public_response_at?: string | null;
+          user_read_at?: string | null;
+          status?: FeedbackStatus;
+          priority?: FeedbackPriority;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -1011,6 +1119,22 @@ export type Database = {
       delete_my_account: {
         Args: Record<string, never>;
         Returns: Json;
+      };
+      is_admin: {
+        Args: {
+          p_user_id?: string;
+        };
+        Returns: boolean;
+      };
+      get_admin_feedback_counts: {
+        Args: Record<string, never>;
+        Returns: {
+          total: number;
+          new_count: number;
+          in_progress: number;
+          resolved: number;
+          ignored: number;
+        };
       };
     };
     Enums: {

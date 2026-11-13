@@ -13,6 +13,30 @@ Tài liệu này hướng dẫn cách khởi tạo và cập nhật cơ sở d�
 7. `supabase/migrations/20261112000007_phase2_step7_print_exams.sql`: Mở rộng `profiles` (`default_print_header`) và `exams` (`exam_mode`, `version_count`, `seed`, `header_info`) cho tính năng xuất đề in nhiều mã đề (Word `.docx` & PDF A4).
 8. `supabase/migrations/20261112000008_phase3_step9_student_accounts.sql`: Mở app cho tài khoản học sinh/tự học (`handle_new_user` hỗ trợ `student|teacher`, `consented_at`, hàm `is_teacher()`, siết RLS `exams/exam_versions`, liên kết `learners.user_id`, RPC gộp hồ sơ ẩn danh, `ai_global_usage` + `consume_ai_quota_v2`, và `delete_my_account`).
 9. `supabase/migrations/20261113000009_scope_file_hash_per_owner.sql`: Cô lập kiểm tra trùng file theo từng người dùng `(owner_id, source_file_hash)`, dọn sạch các ràng buộc UNIQUE toàn cục trên hash để hai người khác nhau nạp cùng file đều thành công và không thấy thông tin của nhau.
+10. `supabase/migrations/20261113000010_step12_phase_d_admin_feedback.sql`: Bước 12 (Giai đoạn D) - Nền tảng bảng `admins`, hàm `is_admin()`, nhật ký `admin_audit_log`, bảng `feedback` và RPC `get_admin_feedback_counts`.
+
+---
+
+## Hướng dẫn gán quyền Admin cho tài khoản của bạn
+
+Nguyên tắc an toàn: Vai trò admin **không bao giờ** lưu trong `profiles.role` và không nhận từ client. Bảng `admins` không có policy ghi công khai mà chỉ được thao tác trực tiếp qua SQL:
+
+1. Vào **Supabase Dashboard** → **SQL Editor**.
+2. Tìm `id` (UUID) của tài khoản bạn trong bảng `auth.users` hoặc chạy lệnh:
+   ```sql
+   -- Xem ID theo email của bạn
+   select id, email from auth.users where email = 'your-email@example.com';
+   ```
+3. Chạy lệnh sau để cấp quyền Admin:
+   ```sql
+   insert into public.admins (user_id)
+   values ('<ID_USER_CỦA_BẠN>')
+   on conflict do nothing;
+   ```
+4. Để gỡ quyền Admin khi cần:
+   ```sql
+   delete from public.admins where user_id = '<ID_USER_CỦA_BẠN>';
+   ```
 
 ---
 
