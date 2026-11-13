@@ -6,6 +6,10 @@ import {
   hashLearnerTokenSha256,
   normalizeRecoveryCode,
 } from "@/lib/srs/crypto-and-pomodoro";
+import {
+  strongPasswordSchema,
+  isPasswordContainingEmail,
+} from "@/lib/auth/password-rules";
 import { vi } from "@/lib/i18n/vi";
 
 const patchSettingsSchema = z.discriminatedUnion("action", [
@@ -21,6 +25,19 @@ const patchSettingsSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("merge_anonymous"),
     recoveryCode: z.string().trim().min(6).max(32),
+  }),
+  z.object({
+    action: z.literal("change_password"),
+    currentPassword: z.string().min(1),
+    newPassword: strongPasswordSchema,
+    confirmPassword: z.string().min(1),
+  }),
+  z.object({
+    action: z.literal("change_email"),
+    newEmail: z.string().trim().email(),
+  }),
+  z.object({
+    action: z.literal("logout_all"),
   }),
 ]);
 
@@ -82,6 +99,78 @@ export async function PATCH(request: Request) {
 
       return NextResponse.json({
         role: input.targetRole,
+      });
+    }
+
+    if (input.action === "change_password") {
+      const email = authProfile.user.email ?? "";
+      if (input.newPassword !== input.confirmPassword) {
+        return NextResponse.json(
+          { error: vi.auth.validation.passwordMismatch },
+          { status: 400 }
+        );
+      }
+      if (isPasswordContainingEmail(input.newPassword, email)) {
+        return NextResponse.json(
+          { error: vi.auth.validation.passwordContainsEmail },
+          { status: 400 }
+        );
+      }
+
+      // Xác thực mật khẩu cũ
+      const { error: signInErr } = await supabase.auth.signInWithPassword({
+        email,
+        password: input.currentPassword,
+      });
+
+      if (signInErr) {
+        return NextResponse.json(
+          { error: vi.settings.currentPasswordIncorrect },
+          { status: 400 }
+        );
+      }
+
+      // Đổi sang mật khẩu mới
+      const { error: updateErr } = await supabase.auth.updateUser({
+        password: input.newPassword,
+      });
+
+      if (updateErr) {
+        return NextResponse.json(
+          { error: updateErr.message },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json({
+        ok: true,
+        notice: vi.settings.passwordChangedNotice,
+      });
+    }
+
+    if (input.action === "change_email") {
+      const { error: updateErr } = await supabase.auth.updateUser({
+        email: input.newEmail,
+      });
+
+      if (updateErr) {
+        return NextResponse.json(
+          { error: updateErr.message },
+          { status: 400 }
+        );
+      }
+
+      return NextResponse.json({
+        ok: true,
+        notice: vi.settings.emailChangeSentNotice,
+      });
+    }
+
+    if (input.action === "logout_all") {
+      await supabase.auth.signOut({ scope: "others" });
+      return NextResponse.json({
+        ok: true,
+        notice: vi.settings.logoutAllNotice,
       });
     }
 

@@ -251,7 +251,7 @@ export default async function DashboardPage(props: {
 
           <div className="flex items-center gap-2">
             <Link
-              href="/dashboard/settings"
+              href="/dashboard/account"
               className="inline-flex min-h-[40px] items-center rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:text-sm"
             >
               ⚙ {vi.nav.settings}
