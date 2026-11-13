@@ -160,3 +160,4 @@ end;
 $$;
 
 grant execute on function public.get_admin_feedback_counts() to authenticated;
+
