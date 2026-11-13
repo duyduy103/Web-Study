@@ -253,6 +253,10 @@ export async function importQuestionSetToDatabase(params: {
     preParsedQuestions,
   } = params;
 
+  if (!userId || typeof userId !== "string" || userId.trim() === "") {
+    throw new Error(vi.importSet.errors.unauthorized);
+  }
+
   const fileHash = computeSha256(source.buffer);
 
   // 1. Kiểm tra cache theo source_file_hash của cùng chủ sở hữu

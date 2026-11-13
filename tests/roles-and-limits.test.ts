@@ -27,7 +27,8 @@ describe("Step 9: Role Authorization, AI/Storage Limits & Anonymous Merge", () =
     const invalidSignup = signupSchema.safeParse({
       role: "admin",
       email: "a@b.com",
-      password: "password123",
+      password: "StrongPassword2026!",
+      confirmPassword: "StrongPassword2026!",
       consentAccepted: true,
     });
     expect(invalidSignup.success).toBe(false);
@@ -35,7 +36,8 @@ describe("Step 9: Role Authorization, AI/Storage Limits & Anonymous Merge", () =
     const noConsentSignup = signupSchema.safeParse({
       role: "student",
       email: "a@b.com",
-      password: "password123",
+      password: "StrongPassword2026!",
+      confirmPassword: "StrongPassword2026!",
       consentAccepted: false,
     });
     expect(noConsentSignup.success).toBe(false);
@@ -44,7 +46,8 @@ describe("Step 9: Role Authorization, AI/Storage Limits & Anonymous Merge", () =
       role: "student",
       displayName: "Minh Khoa",
       email: "hs@b.com",
-      password: "password123",
+      password: "StrongPassword2026!",
+      confirmPassword: "StrongPassword2026!",
       consentAccepted: true,
     });
     expect(validStudentSignup.success).toBe(true);

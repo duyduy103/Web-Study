@@ -23,7 +23,12 @@ import {
 } from "@/components/ui/card";
 import { CreateSetButton } from "@/components/features/dashboard/create-set-button";
 
-export default async function DashboardPage() {
+export default async function DashboardPage(props: {
+  searchParams?: Promise<{ confirmed?: string }>;
+}) {
+  const searchParams = props.searchParams ? await props.searchParams : {};
+  const isConfirmed = searchParams.confirmed === "true";
+
   const supabase = await createClient();
   const authProfile = await getAuthenticatedProfile(supabase);
 
@@ -261,6 +266,18 @@ export default async function DashboardPage() {
       </header>
 
       <main className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+        {isConfirmed ? (
+          <div
+            role="status"
+            className="flex items-center gap-3 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3.5 text-sm font-semibold text-teal-900 shadow-2xs"
+          >
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-teal-600 text-xs text-white">
+              ✓
+            </span>
+            <span>{vi.auth.emailConfirmedBanner}</span>
+          </div>
+        ) : null}
+
         <section className="flex flex-col justify-between gap-4 rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50/80 via-white to-sky-50/60 p-5 sm:flex-row sm:items-center sm:p-6">
           <div className="space-y-1">
             <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">
