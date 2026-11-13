@@ -19,6 +19,26 @@ export type ExamMode = "online" | "print" | "self";
 export type FeedbackType = "bug" | "idea" | "question" | "upgrade_request" | "other";
 export type FeedbackStatus = "new" | "in_progress" | "resolved" | "ignored";
 export type FeedbackPriority = "low" | "medium" | "high" | "urgent";
+export type PlanCode = "free" | "premium";
+export type SubscriptionStatus = "active" | "canceled" | "expired";
+
+export interface PlanLimits {
+  max_questions_per_set: number | null;
+  max_sets_per_day: number | null;
+  ai_daily_limit: number;
+  max_export_versions: number;
+}
+
+export interface UserEntitlements {
+  plan_code: PlanCode;
+  plan_name: string;
+  is_premium: boolean;
+  status: SubscriptionStatus;
+  period_end: string | null;
+  source: string;
+  limits: PlanLimits;
+  custom_ai_daily_limit: number | null;
+}
 
 export type Database = {
   public: {
@@ -922,11 +942,74 @@ export type Database = {
         };
         Relationships: [];
       };
+      plans: {
+        Row: {
+          code: string;
+          name: string;
+          limits: Json;
+          active: boolean;
+          created_at: string;
+        };
+        Insert: {
+          code: string;
+          name: string;
+          limits?: Json;
+          active?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          code?: string;
+          name?: string;
+          limits?: Json;
+          active?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      subscriptions: {
+        Row: {
+          id: string;
+          user_id: string;
+          plan_code: string;
+          status: SubscriptionStatus;
+          period_end: string | null;
+          source: string;
+          granted_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          plan_code: string;
+          status?: SubscriptionStatus;
+          period_end?: string | null;
+          source?: string;
+          granted_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          plan_code?: string;
+          status?: SubscriptionStatus;
+          period_end?: string | null;
+          source?: string;
+          granted_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
+      get_entitlements: {
+        Args: {
+          p_user_id?: string | null;
+        };
+        Returns: Json;
+      };
       consume_ai_quota: {
         Args: {
           p_daily_limit?: number;

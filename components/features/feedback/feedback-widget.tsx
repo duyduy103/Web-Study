@@ -28,6 +28,21 @@ export function FeedbackWidget({
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
   const [successMsg, setSuccessMsg] = React.useState<string | null>(null);
 
+  React.useEffect(() => {
+    const handleOpenModal = (event: Event) => {
+      const customEvt = event as CustomEvent<{ type?: FeedbackType }>;
+      setIsOpen(true);
+      if (customEvt.detail?.type) {
+        setType(customEvt.detail.type);
+      }
+    };
+
+    window.addEventListener("open-feedback-modal", handleOpenModal);
+    return () => {
+      window.removeEventListener("open-feedback-modal", handleOpenModal);
+    };
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);

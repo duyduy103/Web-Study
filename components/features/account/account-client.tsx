@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { UserRole } from "@/lib/supabase/types";
+import type { UserRole, UserEntitlements } from "@/lib/supabase/types";
 import { vi } from "@/lib/i18n/vi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ interface AccountClientProps {
   initialDisplayName: string;
   initialRole: UserRole;
   email: string;
+  entitlements?: UserEntitlements;
   quotaStatus: {
     remainingToday: number;
     dailyLimit: number;
@@ -32,6 +33,7 @@ export function AccountClient({
   initialDisplayName,
   initialRole,
   email,
+  entitlements,
   quotaStatus,
   usageStats,
 }: AccountClientProps) {
@@ -351,22 +353,48 @@ export function AccountClient({
         {/* Khối 1: Gói và mức sử dụng */}
         <Card className="rounded-3xl border border-[var(--space-border)] bg-[var(--space-surface)] shadow-sm">
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <CardTitle className="text-base font-bold text-[var(--heading)]">
-                  {vi.settings.planSectionTitle}
+                <CardTitle className="text-base font-bold text-[var(--heading)] flex items-center gap-2">
+                  <span>{vi.settings.planSectionTitle}</span>
+                  {entitlements?.is_premium ? (
+                    <span className="rounded-full bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 text-[10px] font-black tracking-wide uppercase">
+                      PRO
+                    </span>
+                  ) : null}
                 </CardTitle>
                 <CardDescription className="text-xs">
                   {vi.settings.currentPlan}{" "}
                   <strong className="font-extrabold text-[var(--space-primary)]">
-                    {vi.settings.planFree}
+                    {entitlements?.plan_name ?? vi.settings.planFree}
                   </strong>{" "}
-                  • {vi.settings.planExpiry} {vi.settings.planLifetime}
+                  • {vi.settings.planExpiry}{" "}
+                  {entitlements?.period_end
+                    ? new Date(entitlements.period_end).toLocaleDateString("vi-VN")
+                    : vi.settings.planLifetime}
                 </CardDescription>
               </div>
-              <span className="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800">
-                Miễn phí
-              </span>
+
+              <div className="flex items-center gap-2">
+                {!entitlements?.is_premium ? (
+                  <Link
+                    href="/pricing"
+                    className="inline-flex items-center justify-center rounded-xl border border-amber-300 bg-white px-3 py-1.5 text-xs font-bold text-amber-800 hover:bg-amber-50 shadow-xs"
+                  >
+                    Nâng cấp gói
+                  </Link>
+                ) : null}
+
+                {entitlements?.is_premium ? (
+                  <span className="rounded-xl border border-amber-400 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-900">
+                    ★ Premium
+                  </span>
+                ) : (
+                  <span className="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800">
+                    Miễn phí
+                  </span>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">

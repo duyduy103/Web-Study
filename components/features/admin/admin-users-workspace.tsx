@@ -20,6 +20,12 @@ export interface AdminUserItem {
   set_count: number;
   ai_today_calls: number;
   feedback_count: number;
+  subscription?: {
+    plan_code: string;
+    status: string;
+    period_end: string | null;
+    created_at: string;
+  } | null;
 }
 
 export function AdminUsersWorkspace({
@@ -36,15 +42,17 @@ export function AdminUsersWorkspace({
   const [search, setSearch] = React.useState("");
   const [roleFilter, setRoleFilter] = React.useState("all");
   const [statusFilter, setStatusFilter] = React.useState("all");
+  const [planFilter, setPlanFilter] = React.useState("all");
   const [loading, setLoading] = React.useState(false);
 
   // Dialog action state
   const [activeModalUser, setActiveModalUser] = React.useState<AdminUserItem | null>(null);
   const [modalAction, setModalAction] = React.useState<
-    "block" | "unblock" | "reset_ai" | "custom_ai" | "delete" | null
+    "block" | "unblock" | "reset_ai" | "custom_ai" | "grant_premium" | "revoke_premium" | "delete" | null
   >(null);
   const [actionReason, setActionReason] = React.useState("");
   const [customAiLimitInput, setCustomAiLimitInput] = React.useState<number>(50);
+  const [premiumDurationDays, setPremiumDurationDays] = React.useState<number>(30);
   const [actionLoading, setActionLoading] = React.useState(false);
   const [actionError, setActionError] = React.useState<string | null>(null);
 
@@ -89,7 +97,16 @@ export function AdminUsersWorkspace({
     else if (modalAction === "unblock") apiAction = "unblock";
     else if (modalAction === "reset_ai") apiAction = "reset_ai_quota";
     else if (modalAction === "custom_ai") apiAction = "set_custom_ai_limit";
+    else if (modalAction === "grant_premium") apiAction = "grant_premium";
+    else if (modalAction === "revoke_premium") apiAction = "revoke_premium";
     else if (modalAction === "delete") apiAction = "delete_user";
+
+    const customLimitParam =
+      modalAction === "custom_ai"
+        ? customAiLimitInput
+        : modalAction === "grant_premium"
+        ? (premiumDurationDays === 0 ? null : premiumDurationDays)
+        : null;
 
     try {
       const res = await fetch("/api/admin/users", {
@@ -99,7 +116,7 @@ export function AdminUsersWorkspace({
           target_user_id: activeModalUser.id,
           action: apiAction,
           reason: actionReason,
-          custom_limit: modalAction === "custom_ai" ? customAiLimitInput : null,
+          custom_limit: customLimitParam,
         }),
       });
 
@@ -119,6 +136,29 @@ export function AdminUsersWorkspace({
       setActionLoading(false);
     }
   };
+
+  const displayedUsers = React.useMemo(() => {
+    if (planFilter === "all") return users;
+    const now = Date.now();
+    return users.filter((u) => {
+      const isPremActive =
+        u.subscription &&
+        u.subscription.status === "active" &&
+        u.subscription.plan_code === "premium" &&
+        (!u.subscription.period_end ||
+          new Date(u.subscription.period_end).getTime() > now);
+
+      if (planFilter === "free") return !isPremActive;
+      if (planFilter === "premium") return isPremActive;
+      if (planFilter === "expiring_soon") {
+        if (!isPremActive || !u.subscription?.period_end) return false;
+        const msRemaining = new Date(u.subscription.period_end).getTime() - now;
+        const days = Math.ceil(msRemaining / (1000 * 60 * 60 * 24));
+        return days > 0 && days <= 7;
+      }
+      return true;
+    });
+  }, [users, planFilter]);
 
   return (
     <div className="space-y-6">
@@ -160,6 +200,17 @@ export function AdminUsersWorkspace({
             <option value="active">{vi.admin.users.statusActive}</option>
             <option value="blocked">{vi.admin.users.statusBlocked}</option>
           </select>
+
+          <select
+            value={planFilter}
+            onChange={(e) => setPlanFilter(e.target.value)}
+            className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-slate-300 focus:outline-none"
+          >
+            <option value="all">{vi.admin.users.filterPlanAll}</option>
+            <option value="free">{vi.admin.users.filterPlanFree}</option>
+            <option value="premium">{vi.admin.users.filterPlanPremium}</option>
+            <option value="expiring_soon">{vi.admin.users.filterPlanExpiringSoon}</option>
+          </select>
         </div>
       </div>
 
@@ -171,6 +222,7 @@ export function AdminUsersWorkspace({
               <tr className="border-b border-slate-800 bg-slate-900/60 text-slate-400 font-bold uppercase tracking-wider text-[11px]">
                 <th className="py-3 px-4">{vi.admin.users.colUser}</th>
                 <th className="py-3 px-4">{vi.admin.users.colRole}</th>
+                <th className="py-3 px-4">Gói dịch vụ</th>
                 <th className="py-3 px-4">{vi.admin.users.colUsage}</th>
                 <th className="py-3 px-4">{vi.admin.users.colLastSeen}</th>
                 <th className="py-3 px-4">{vi.admin.users.colStatus}</th>
@@ -178,9 +230,24 @@ export function AdminUsersWorkspace({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/80">
-              {users.map((u) => {
+              {displayedUsers.map((u) => {
                 const isSelf = u.id === currentAdminId;
                 const canModify = !isSelf && !u.is_admin;
+                const now = Date.now();
+                const isPremActive =
+                  u.subscription &&
+                  u.subscription.status === "active" &&
+                  u.subscription.plan_code === "premium" &&
+                  (!u.subscription.period_end ||
+                    new Date(u.subscription.period_end).getTime() > now);
+
+                let daysRemaining: number | null = null;
+                if (isPremActive && u.subscription?.period_end) {
+                  daysRemaining = Math.ceil(
+                    (new Date(u.subscription.period_end).getTime() - now) /
+                      (1000 * 60 * 60 * 24)
+                  );
+                }
 
                 return (
                   <tr
@@ -220,6 +287,27 @@ export function AdminUsersWorkspace({
                       >
                         {u.role === "teacher" ? "Giáo viên" : "Học sinh"}
                       </span>
+                    </td>
+
+                    <td className="py-3.5 px-4">
+                      {isPremActive ? (
+                        <div className="space-y-0.5">
+                          <span className="rounded-md px-2 py-0.5 text-[10px] font-black bg-gradient-to-r from-amber-950 to-orange-950 text-amber-300 border border-amber-700/80 inline-flex items-center gap-1 shadow-xs">
+                            ★ Premium
+                          </span>
+                          <p className="text-[10px] text-amber-400 font-medium">
+                            {daysRemaining !== null
+                              ? daysRemaining <= 7
+                                ? `⚠️ Còn ${daysRemaining} ngày`
+                                : `Đến ${new Date(u.subscription!.period_end!).toLocaleDateString("vi-VN")}`
+                              : "Vĩnh viễn"}
+                          </p>
+                        </div>
+                      ) : (
+                        <span className="rounded-md px-2 py-0.5 text-[10px] font-medium bg-slate-900 text-slate-400 border border-slate-800">
+                          Miễn phí (Free)
+                        </span>
+                      )}
                     </td>
 
                     <td className="py-3.5 px-4 text-slate-300">
@@ -274,9 +362,41 @@ export function AdminUsersWorkspace({
                     </td>
 
                     <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                      <div className="flex items-center justify-end gap-1.5 flex-wrap">
                         {canModify ? (
                           <>
+                            {/* Nút Cấp / Hủy Premium */}
+                            {isPremActive ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setActiveModalUser(u);
+                                  setModalAction("revoke_premium");
+                                  setActionReason("");
+                                }}
+                                className="h-7 text-[11px] bg-slate-900 border-amber-900 text-amber-400 hover:bg-amber-950"
+                                title="Hủy quyền lợi Premium"
+                              >
+                                {vi.admin.users.actionRevokePremium}
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setActiveModalUser(u);
+                                  setModalAction("grant_premium");
+                                  setPremiumDurationDays(30);
+                                  setActionReason("Cấp trải nghiệm tính năng");
+                                }}
+                                className="h-7 text-[11px] bg-slate-900 border-amber-800 text-amber-300 hover:bg-amber-950"
+                                title="Cấp gói Premium"
+                              >
+                                {vi.admin.users.actionGrantPremium}
+                              </Button>
+                            )}
+
                             {u.is_blocked ? (
                               <Button
                                 size="sm"
@@ -362,7 +482,7 @@ export function AdminUsersWorkspace({
           </table>
         </div>
 
-        {users.length === 0 && !loading ? (
+        {displayedUsers.length === 0 && !loading ? (
           <div className="p-8 text-center text-xs text-slate-500">
             {vi.admin.users.noUsersFound}
           </div>
@@ -382,8 +502,34 @@ export function AdminUsersWorkspace({
               {modalAction === "unblock" && `Mở khóa cho ${activeModalUser.display_name}`}
               {modalAction === "reset_ai" && `Đặt lại lượt AI hôm nay cho ${activeModalUser.display_name}`}
               {modalAction === "custom_ai" && `Đặt hạn mức AI riêng: ${activeModalUser.display_name}`}
+              {modalAction === "grant_premium" && `Cấp gói Premium cho ${activeModalUser.display_name}`}
+              {modalAction === "revoke_premium" && `Hủy gói Premium của ${activeModalUser.display_name}`}
               {modalAction === "delete" && `⚠️ XÓA VĨNH VIỄN tài khoản ${activeModalUser.display_name}`}
             </h3>
+
+            {modalAction === "grant_premium" ? (
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-400">
+                  {vi.admin.users.durationPrompt}
+                </label>
+                <select
+                  value={premiumDurationDays}
+                  onChange={(e) => setPremiumDurationDays(Number(e.target.value))}
+                  className="w-full rounded-2xl border border-slate-800 bg-slate-900 p-2.5 text-xs text-white focus:outline-none focus:border-amber-500"
+                >
+                  <option value={30}>{vi.admin.users.duration30}</option>
+                  <option value={90}>{vi.admin.users.duration90}</option>
+                  <option value={365}>{vi.admin.users.duration365}</option>
+                  <option value={0}>{vi.admin.users.durationLifetime}</option>
+                </select>
+              </div>
+            ) : null}
+
+            {modalAction === "revoke_premium" ? (
+              <div className="rounded-xl border border-amber-900/60 bg-amber-950/40 p-3 text-xs text-amber-300">
+                Tài khoản sẽ được chuyển về gói Miễn phí (Free) và các giới hạn tương ứng sẽ có hiệu lực ngay lập tức.
+              </div>
+            ) : null}
 
             {modalAction === "custom_ai" ? (
               <div className="space-y-1.5">
@@ -409,7 +555,12 @@ export function AdminUsersWorkspace({
                 {vi.admin.users.reasonPrompt}
               </label>
               <textarea
-                required={modalAction === "block" || modalAction === "delete"}
+                required={
+                  modalAction === "block" ||
+                  modalAction === "delete" ||
+                  modalAction === "grant_premium" ||
+                  modalAction === "revoke_premium"
+                }
                 rows={3}
                 value={actionReason}
                 onChange={(e) => setActionReason(e.target.value)}
@@ -440,12 +591,19 @@ export function AdminUsersWorkspace({
                 onClick={handleExecuteAction}
                 disabled={
                   actionLoading ||
-                  ((modalAction === "block" || modalAction === "delete") &&
+                  ((modalAction === "block" ||
+                    modalAction === "delete" ||
+                    modalAction === "grant_premium" ||
+                    modalAction === "revoke_premium") &&
                     actionReason.trim().length === 0)
                 }
                 className={
                   modalAction === "delete" || modalAction === "block"
                     ? "bg-red-600 text-white hover:bg-red-700"
+                    : modalAction === "grant_premium"
+                    ? "bg-amber-500 text-slate-950 hover:bg-amber-400 font-bold"
+                    : modalAction === "revoke_premium"
+                    ? "bg-red-900 text-white hover:bg-red-800 font-bold"
                     : "bg-teal-500 text-slate-950 hover:bg-teal-400 font-bold"
                 }
               >
@@ -458,4 +616,3 @@ export function AdminUsersWorkspace({
     </div>
   );
 }
-

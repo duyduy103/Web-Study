@@ -6,6 +6,7 @@ import {
   getAiDailyLimitForRole,
   getAiGlobalDailyLimit,
 } from "@/lib/ai/limits";
+import { getUserEntitlements } from "@/lib/entitlements";
 import { vi } from "@/lib/i18n/vi";
 
 export interface QuotaStatus {
@@ -72,8 +73,14 @@ export async function getUserAiQuotaStatus(
   userId: string,
   knownRole?: UserRole
 ): Promise<QuotaStatus> {
-  const role = knownRole ?? (await resolveUserRole(supabase, userId));
-  const dailyLimit = getAiDailyLimitForRole(role);
+  let dailyLimit: number;
+  try {
+    const entitlements = await getUserEntitlements(supabase, userId);
+    dailyLimit = entitlements.limits.ai_daily_limit;
+  } catch {
+    const role = knownRole ?? (await resolveUserRole(supabase, userId));
+    dailyLimit = getAiDailyLimitForRole(role);
+  }
   const today = new Date().toISOString().slice(0, 10);
 
   const { data } = await supabase
@@ -133,8 +140,19 @@ export async function consumeUserAiQuotaOrThrow(
   knownRole?: UserRole,
   userId?: string
 ): Promise<QuotaConsumeResult> {
-  const role = knownRole ?? (await resolveUserRole(supabase, userId));
-  const userLimit = getAiDailyLimitForRole(role);
+  let userLimit: number;
+  if (userId) {
+    try {
+      const entitlements = await getUserEntitlements(supabase, userId);
+      userLimit = entitlements.limits.ai_daily_limit;
+    } catch {
+      const role = knownRole ?? (await resolveUserRole(supabase, userId));
+      userLimit = getAiDailyLimitForRole(role);
+    }
+  } else {
+    const role = knownRole ?? (await resolveUserRole(supabase, userId));
+    userLimit = getAiDailyLimitForRole(role);
+  }
   const globalLimit = getAiGlobalDailyLimit();
 
   const { data, error } = await supabase.rpc("consume_ai_quota_v2", {

@@ -13,6 +13,7 @@ import type {
   ExamQuestionWithSnapshot,
 } from "@/lib/grading/types";
 import type { Json } from "@/lib/supabase/types";
+import { getUserEntitlements } from "@/lib/entitlements";
 import { vi } from "@/lib/i18n/vi";
 
 const createPrintExamSchema = z.object({
@@ -57,6 +58,17 @@ export async function POST(request: Request) {
     }
 
     const input = parsed.data;
+
+    // Kiểm tra quyền hạn gói (Entitlements: Free chỉ 1 mã đề, Premium lên tới 4 mã đề)
+    const entitlements = await getUserEntitlements(supabase, user.id);
+    if (input.versionCount > entitlements.limits.max_export_versions) {
+      return NextResponse.json(
+        {
+          error: `${vi.plans.exportVersionLimitPrefix} ${entitlements.limits.max_export_versions} ${vi.plans.exportVersionLimitSuffix}`,
+        },
+        { status: 403 }
+      );
+    }
 
     // 1. Kiểm tra quyền sở hữu bộ câu hỏi trên server
     const { data: setRow } = await supabase

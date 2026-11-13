@@ -15,6 +15,7 @@ Tài liệu này hướng dẫn cách khởi tạo và cập nhật cơ sở d�
 9. `supabase/migrations/20261113000009_scope_file_hash_per_owner.sql`: Cô lập kiểm tra trùng file theo từng người dùng `(owner_id, source_file_hash)`, dọn sạch các ràng buộc UNIQUE toàn cục trên hash để hai người khác nhau nạp cùng file đều thành công và không thấy thông tin của nhau.
 10. `supabase/migrations/20261113000010_step12_phase_d_admin_feedback.sql`: Bước 12 (Giai đoạn D) - Nền tảng bảng `admins`, hàm `is_admin()`, nhật ký `admin_audit_log`, bảng `feedback` và RPC `get_admin_feedback_counts`.
 11. `supabase/migrations/20261113000011_step12_phase_c_admin_users_and_stats.sql`: Bước 12 (Giai đoạn C) - Mở rộng `profiles` (`last_seen_at`, `is_blocked`, `blocked_reason`, `blocked_at`, `custom_ai_daily_limit`), RPC `update_last_seen`, `get_admin_system_overview`, `get_admin_users_list`, `admin_manage_user` (chặn tự khóa/xóa mình/admin khác).
+12. `supabase/migrations/20261113000012_step12_phase_b_plans_and_entitlements.sql`: Bước 12 (Giai đoạn B) - Bảng `plans` (seed `free` & `premium`), bảng `subscriptions`, RPC `get_entitlements` (tính quyền lợi thời gian thực, tự về free khi hết hạn), mở rộng `consume_ai_quota_v2`, `admin_manage_user` (cấp/hủy gói Premium) và `get_admin_users_list` (kèm trạng thái subscription).
 
 ---
 

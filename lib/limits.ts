@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, UserRole } from "@/lib/supabase/types";
+import { getUserEntitlements } from "@/lib/entitlements";
 import { vi } from "@/lib/i18n/vi";
 
 export interface AccountLimitsConfig {
@@ -98,8 +99,47 @@ export async function enforceAccountImportLimits(params: {
   role: UserRole;
   newFileSizeBytes: number;
   pdfPageCount?: number | null;
+  questionCount?: number | null;
 }): Promise<void> {
-  const { supabase, userId, role, newFileSizeBytes, pdfPageCount } = params;
+  const { supabase, userId, role, newFileSizeBytes, pdfPageCount, questionCount } = params;
+
+  // 1. Kiểm tra hạn mức gói theo ngày và số câu (Entitlements)
+  try {
+    const entitlements = await getUserEntitlements(supabase, userId);
+
+    if (entitlements.limits.max_sets_per_day !== null) {
+      const todayIso = new Date().toISOString().slice(0, 10);
+      const { count: todaySetsCount } = await supabase
+        .from("question_sets")
+        .select("id", { count: "exact", head: true })
+        .eq("owner_id", userId)
+        .gte("created_at", `${todayIso}T00:00:00.000Z`);
+
+      if (
+        typeof todaySetsCount === "number" &&
+        todaySetsCount >= entitlements.limits.max_sets_per_day
+      ) {
+        throw new Error(
+          `${vi.plans.dailySetLimitPrefix} ${entitlements.limits.max_sets_per_day} ${vi.plans.dailySetLimitSuffix}`
+        );
+      }
+    }
+
+    if (
+      typeof questionCount === "number" &&
+      entitlements.limits.max_questions_per_set !== null &&
+      questionCount > entitlements.limits.max_questions_per_set
+    ) {
+      throw new Error(
+        `${vi.plans.maxQuestionsPerSetPrefix} ${entitlements.limits.max_questions_per_set} ${vi.plans.maxQuestionsPerSetSuffix}`
+      );
+    }
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("Gói")) {
+      throw err;
+    }
+    // Bỏ qua lỗi kết nối entitlements phụ, tiếp tục các kiểm tra dung lượng
+  }
 
   const { data: userSets } = await supabase
     .from("question_sets")

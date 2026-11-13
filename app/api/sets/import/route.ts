@@ -91,6 +91,7 @@ export async function POST(request: Request) {
       userId: user.id,
       role,
       newFileSizeBytes: source.buffer.byteLength,
+      questionCount: preParsedQuestions?.length,
     });
 
     const result = await importQuestionSetToDatabase({

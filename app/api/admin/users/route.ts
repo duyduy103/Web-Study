@@ -9,6 +9,8 @@ const manageUserSchema = z.object({
     "unblock",
     "reset_ai_quota",
     "set_custom_ai_limit",
+    "grant_premium",
+    "revoke_premium",
     "delete_user",
   ]),
   reason: z.string().trim().optional(),
@@ -64,9 +66,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if ((action === "block" || action === "delete_user") && (!reason || reason.trim().length === 0)) {
+    if (
+      (action === "block" ||
+        action === "delete_user" ||
+        action === "grant_premium" ||
+        action === "revoke_premium") &&
+      (!reason || reason.trim().length === 0)
+    ) {
       return NextResponse.json(
-        { error: "Bắt buộc phải nhập lý do khi khóa hoặc xóa tài khoản." },
+        { error: "Bắt buộc phải nhập lý do khi thực hiện thao tác này." },
         { status: 400 }
       );
     }

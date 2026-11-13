@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthenticatedProfile } from "@/lib/auth/roles";
-import { getAiDailyLimitForRole } from "@/lib/ai/limits";
+import { getUserEntitlements } from "@/lib/entitlements";
 import { AccountClient } from "@/components/features/account/account-client";
 
 export const metadata = {
@@ -20,15 +20,9 @@ export default async function AccountPage() {
 
   const userId = authProfile.user.id;
 
-  // Lấy thông tin hạn mức AI của người dùng
-  const defaultLimit = getAiDailyLimitForRole(authProfile.role);
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("custom_ai_daily_limit")
-    .eq("id", userId)
-    .maybeSingle();
-
-  const effectiveLimit = profile?.custom_ai_daily_limit ?? defaultLimit;
+  // Lấy quyền lợi tài khoản (Entitlements: Free vs Premium + Custom AI Limit)
+  const entitlements = await getUserEntitlements(supabase, userId);
+  const effectiveLimit = entitlements.limits.ai_daily_limit;
 
   // Đọc lượt gọi AI hôm nay
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -70,6 +64,7 @@ export default async function AccountPage() {
       initialDisplayName={authProfile.displayName}
       initialRole={authProfile.role}
       email={authProfile.user.email ?? ""}
+      entitlements={entitlements}
       quotaStatus={{
         remainingToday,
         dailyLimit: effectiveLimit,

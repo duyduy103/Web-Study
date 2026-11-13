@@ -42,6 +42,17 @@ export default function PrivacyPage() {
             cùng toàn bộ bộ câu hỏi, file đã tải lên Storage và lịch sử học tập
             bất kỳ lúc nào trong trang Cài đặt tài khoản.
           </p>
+
+          <h2 className="text-base font-bold text-slate-900">
+            4. Dữ liệu gói dịch vụ & Thông tin thanh toán
+          </h2>
+          <p>
+            MemoQuiz chỉ lưu trữ trạng thái gói dịch vụ (Free/Premium), thời điểm
+            bắt đầu và ngày hết hạn. Chúng tôi không lưu trữ bất kỳ thông tin
+            thẻ thanh toán, số tài khoản ngân hàng hay mật mã bảo mật tài chính
+            nào của người dùng. Mọi thao tác nâng cấp hoặc đối soát thanh toán
+            đều được xử lý bảo mật và minh bạch.
+          </p>
         </section>
 
         <div className="pt-4">

@@ -50,6 +50,29 @@ export default function TermsPage() {
             AI theo ngày, giới hạn số lượng bộ câu hỏi và dung lượng lưu trữ
             trên mỗi tài khoản.
           </p>
+
+          <h2 className="text-base font-bold text-slate-900">
+            5. Gói dịch vụ trả phí (Premium)
+          </h2>
+          <p>
+            Tài khoản đăng ký hoặc được cấp gói Cao cấp (Premium) được hưởng
+            các hạn mức nâng cao: không giới hạn số câu hỏi mỗi bộ, không giới
+            hạn số bộ tạo mới mỗi ngày, hạn mức 300 lượt AI mỗi ngày và tính
+            năng xuất 4 mã đề trộn theo seed ra tệp Word (.docx) và PDF A4. Gói
+            có hiệu lực trong thời hạn đã đăng ký hoặc thỏa thuận bằng văn bản.
+          </p>
+
+          <h2 className="text-base font-bold text-slate-900">
+            6. Chính sách thanh toán, nâng cấp & Hoàn tiền
+          </h2>
+          <p>
+            Khi đăng ký gói Premium, các quyền lợi được kích hoạt ngay sau khi
+            xác nhận thanh toán hoặc được ban quản trị phê duyệt. Chúng tôi cam
+            kết hoàn tiền 100% trong vòng 7 ngày đầu tiên nếu hệ thống phát
+            sinh sự cố kỹ thuật nghiêm trọng kéo dài mà không thể khắc phục.
+            Sau 7 ngày hoặc khi người dùng đã sử dụng vượt quá 50% hạn mức AI
+            của chu kỳ, dịch vụ không áp dụng chính sách hoàn trả chi phí.
+          </p>
         </section>
 
         <div className="pt-4">
