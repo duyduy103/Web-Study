@@ -465,3 +465,4 @@ end;
 $$;
 
 grant execute on function public.admin_manage_user(uuid, text, text, integer) to authenticated;
+

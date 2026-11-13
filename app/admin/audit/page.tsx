@@ -34,3 +34,4 @@ export default async function AdminAuditPage() {
 
   return <AdminAuditWorkspace initialLogs={logs} />;
 }
+
