@@ -90,7 +90,8 @@ export default function ResetPasswordPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((prev) => !prev)}
-                    className="text-xs text-teal-700 hover:underline"
+                    aria-label={showPassword ? vi.auth.hidePassword : vi.auth.showPassword}
+                    className="inline-flex min-h-[36px] items-center rounded-md px-1 text-xs font-semibold text-teal-700 hover:text-teal-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-1"
                   >
                     {showPassword ? vi.auth.hidePassword : vi.auth.showPassword}
                   </button>
@@ -125,7 +126,12 @@ export default function ResetPasswordPage() {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword((prev) => !prev)}
-                    className="text-xs text-teal-700 hover:underline"
+                    aria-label={
+                      showConfirmPassword
+                        ? vi.auth.hidePassword
+                        : vi.auth.showPassword
+                    }
+                    className="inline-flex min-h-[36px] items-center rounded-md px-1 text-xs font-semibold text-teal-700 hover:text-teal-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-1"
                   >
                     {showConfirmPassword
                       ? vi.auth.hidePassword

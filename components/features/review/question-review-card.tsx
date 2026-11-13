@@ -158,7 +158,7 @@ export function QuestionReviewCard({
           <div className="flex flex-wrap items-center gap-2">
             <label
               onClick={(e) => e.stopPropagation()}
-              className="inline-flex h-11 w-9 cursor-pointer items-center justify-center"
+              className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg hover:bg-slate-100"
             >
               <input
                 type="checkbox"
@@ -300,8 +300,17 @@ export function QuestionReviewCard({
         </div>
 
         <div
+          role="button"
+          tabIndex={0}
+          aria-label="Bấm để chỉnh sửa câu hỏi này"
           onClick={onStartEdit}
-          className="cursor-pointer space-y-2.5 rounded-xl p-1 transition-colors hover:bg-slate-50/80"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onStartEdit();
+            }
+          }}
+          className="cursor-pointer space-y-2.5 rounded-xl p-1 transition-colors hover:bg-slate-50/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-1"
         >
           <p className="text-sm font-medium text-slate-900 sm:text-base">
             {question.stem}

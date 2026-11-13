@@ -125,8 +125,9 @@ export function ReviewFilterBar({
               <button
                 key={tier}
                 type="button"
+                aria-pressed={active}
                 onClick={() => toggleConfidence(tier)}
-                className={`min-h-[44px] cursor-pointer rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
+                className={`min-h-[44px] cursor-pointer rounded-xl border px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-1 ${
                   active
                     ? "border-teal-600 bg-teal-50 font-bold text-teal-900"
                     : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
@@ -146,8 +147,9 @@ export function ReviewFilterBar({
               <button
                 key={st}
                 type="button"
+                aria-pressed={active}
                 onClick={() => toggleStatus(st)}
-                className={`min-h-[44px] cursor-pointer rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
+                className={`min-h-[44px] cursor-pointer rounded-xl border px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-1 ${
                   active
                     ? "border-teal-600 bg-teal-50 font-bold text-teal-900"
                     : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
@@ -160,6 +162,7 @@ export function ReviewFilterBar({
 
           <button
             type="button"
+            aria-pressed={filter.aiOnly}
             onClick={() =>
               onFilterChange({
                 ...filter,
@@ -167,7 +170,7 @@ export function ReviewFilterBar({
                 aiOnly: !filter.aiOnly,
               })
             }
-            className={`min-h-[44px] cursor-pointer rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
+            className={`min-h-[44px] cursor-pointer rounded-xl border px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-1 ${
               filter.aiOnly
                 ? "border-teal-700 bg-teal-700 text-white"
                 : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
@@ -178,6 +181,7 @@ export function ReviewFilterBar({
 
           <button
             type="button"
+            aria-pressed={filter.warningsOnly}
             onClick={() =>
               onFilterChange({
                 ...filter,
@@ -185,7 +189,7 @@ export function ReviewFilterBar({
                 warningsOnly: !filter.warningsOnly,
               })
             }
-            className={`min-h-[44px] cursor-pointer rounded-xl border px-3 py-2 text-xs font-medium transition-colors ${
+            className={`min-h-[44px] cursor-pointer rounded-xl border px-3 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-1 ${
               filter.warningsOnly
                 ? "border-amber-600 bg-amber-600 text-white"
                 : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"

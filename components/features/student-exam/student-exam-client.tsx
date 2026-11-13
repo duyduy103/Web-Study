@@ -610,13 +610,14 @@ export function StudentExamClient({
                     <button
                       key={choice.id}
                       type="button"
+                      aria-pressed={selected}
                       onClick={() =>
                         updateStudentResponse(
                           activeQuestion.exam_question_id,
                           choice.id
                         )
                       }
-                      className={`flex min-h-[52px] w-full cursor-pointer items-center gap-3 rounded-2xl border p-3.5 text-left text-sm font-medium transition-all sm:text-base ${
+                      className={`flex min-h-[52px] w-full cursor-pointer items-center gap-3 rounded-2xl border p-3.5 text-left text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 sm:text-base ${
                         selected
                           ? "border-teal-600 bg-teal-50/90 text-teal-950 ring-2 ring-teal-600/20"
                           : "border-slate-200 bg-white text-slate-800 hover:border-teal-300 hover:bg-slate-50"
@@ -681,7 +682,7 @@ export function StudentExamClient({
                   placeholder={
                     vi.studentExam.runner.shortAnswerInputPlaceholder
                   }
-                  className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-base text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20 focus:outline-none"
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-base text-slate-900 placeholder:text-slate-400 focus-visible:border-teal-600 focus-visible:ring-2 focus-visible:ring-teal-600/25 focus-visible:outline-none"
                   maxLength={2000}
                 />
               </div>
@@ -751,10 +752,12 @@ export function StudentExamClient({
                 <button
                   key={q.exam_question_id}
                   type="button"
+                  aria-current={isCurrent ? "true" : undefined}
+                  aria-label={`Câu ${idx + 1}${isAnswered ? ", đã trả lời" : ""}${isFlagged ? ", đã đánh dấu" : ""}`}
                   onClick={() => setCurrentIdx(idx)}
-                  className={`relative flex min-h-[44px] cursor-pointer items-center justify-center rounded-xl border text-xs font-bold transition-all ${
+                  className={`relative flex min-h-[44px] cursor-pointer items-center justify-center rounded-xl border text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 ${
                     isCurrent
-                      ? "border-slate-900 bg-slate-900 text-white"
+                      ? "border-slate-900 bg-slate-900 text-white shadow-xs"
                       : isFlagged
                         ? "border-amber-400 bg-amber-50 text-amber-900"
                         : isAnswered

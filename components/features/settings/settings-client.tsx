@@ -207,12 +207,20 @@ export function SettingsClient({
           className="mt-4 space-y-3"
         >
           {profileNotice ? (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs font-medium text-emerald-900">
+            <div
+              role="status"
+              aria-live="polite"
+              className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs font-medium text-emerald-900"
+            >
               {profileNotice}
             </div>
           ) : null}
           {profileError ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs font-medium text-red-800">
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs font-medium text-red-800"
+            >
               {profileError}
             </div>
           ) : null}
@@ -311,12 +319,20 @@ export function SettingsClient({
           className="mt-4 space-y-3"
         >
           {mergeNotice ? (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs font-medium text-emerald-900">
+            <div
+              role="status"
+              aria-live="polite"
+              className="rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs font-medium text-emerald-900"
+            >
               {mergeNotice}
             </div>
           ) : null}
           {mergeError ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs font-medium text-red-800">
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs font-medium text-red-800"
+            >
               {mergeError}
             </div>
           ) : null}
@@ -360,7 +376,11 @@ export function SettingsClient({
           className="mt-4 space-y-3"
         >
           {deleteError ? (
-            <div className="rounded-xl border border-red-300 bg-red-100 px-3.5 py-2.5 text-xs font-medium text-red-900">
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="rounded-xl border border-red-300 bg-red-100 px-3.5 py-2.5 text-xs font-medium text-red-900"
+            >
               {deleteError}
             </div>
           ) : null}
@@ -383,8 +403,9 @@ export function SettingsClient({
 
           <Button
             type="submit"
+            variant="destructive"
             disabled={isDeletingAccount}
-            className="min-h-[44px] bg-red-600 text-white hover:bg-red-700"
+            className="min-h-[44px]"
           >
             {isDeletingAccount
               ? vi.settings.deletingAccountButton

@@ -345,7 +345,11 @@ export default async function DashboardPage(props: {
             </div>
 
             {studentHistory14Days.some((d) => d.totalReviews > 0) ? (
-              <div className="mt-4 flex h-24 items-end justify-between gap-1 border-t border-slate-100 pt-3">
+              <div
+                role="region"
+                aria-label="Biểu đồ lịch sử ôn tập 14 ngày qua"
+                className="mt-4 flex h-24 items-end justify-between gap-1 border-t border-slate-100 pt-3"
+              >
                 {studentHistory14Days.map((day) => {
                   const maxRev = Math.max(
                     1,
@@ -358,20 +362,20 @@ export default async function DashboardPage(props: {
                   return (
                     <div
                       key={day.dateKey}
-                      title={`${day.label}: ${day.totalReviews}`}
+                      aria-label={`${day.label}: ${day.totalReviews} lượt ôn`}
                       className="flex flex-1 flex-col items-center gap-1"
                     >
                       <div className="flex h-14 w-full items-end rounded bg-slate-100 p-0.5">
                         <div
                           style={{ height: `${pct}%` }}
-                          className={`w-full rounded ${
+                          className={`w-full rounded transition-all motion-reduce:transition-none ${
                             day.totalReviews > 0
-                              ? "bg-emerald-500"
+                              ? "bg-teal-600"
                               : "bg-slate-200"
                           }`}
                         />
                       </div>
-                      <span className="text-[9px] text-slate-500">
+                      <span className="text-[9px] font-medium text-slate-500">
                         {day.label}
                       </span>
                     </div>
@@ -406,12 +410,12 @@ export default async function DashboardPage(props: {
               <CardContent className="flex flex-col items-center justify-center space-y-3 py-12 text-center">
                 <div
                   aria-hidden="true"
-                  className="flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-50 text-2xl text-teal-700"
+                  className="flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-50 text-2xl text-teal-700 shadow-2xs"
                 >
                   📚
                 </div>
                 <div className="max-w-md space-y-1.5">
-                  <h3 className="text-base font-semibold text-slate-900">
+                  <h3 className="text-base font-bold text-slate-900">
                     {vi.dashboard.emptyState.title}
                   </h3>
                   <p className="text-sm leading-relaxed text-slate-600">
@@ -422,6 +426,14 @@ export default async function DashboardPage(props: {
                   <p className="pt-1 text-xs font-medium text-teal-700">
                     {vi.dashboard.emptyState.hint}
                   </p>
+                </div>
+                <div className="pt-2">
+                  <Link
+                    href="/dashboard/sets/new"
+                    className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white shadow-2xs hover:bg-teal-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2"
+                  >
+                    + {vi.dashboard.createSetButton}
+                  </Link>
                 </div>
               </CardContent>
             </Card>

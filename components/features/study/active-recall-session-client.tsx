@@ -627,7 +627,7 @@ function ActiveRecallInner({
             value={scratchpad}
             onChange={(e) => setScratchpad(e.target.value)}
             placeholder={vi.study.review.scratchpadPlaceholder}
-            className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-900 focus:border-teal-500 focus:bg-white focus:outline-none"
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-900 focus-visible:border-teal-600 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-teal-600/25 focus-visible:outline-none"
           />
         </div>
 
@@ -659,8 +659,9 @@ function ActiveRecallInner({
                       <button
                         key={ch.id}
                         type="button"
+                        aria-pressed={isSelected}
                         onClick={() => setSelectedHintId(ch.id)}
-                        className={`flex min-h-[44px] w-full cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left text-sm transition-colors ${
+                        className={`flex min-h-[44px] w-full cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-1 ${
                           isSelected
                             ? "border-teal-600 bg-teal-50 font-semibold text-teal-950"
                             : "border-slate-200 bg-white text-slate-800 hover:bg-slate-100"
@@ -694,7 +695,12 @@ function ActiveRecallInner({
             </Button>
           </div>
         ) : (
-          <div className="mt-6 space-y-5 border-t border-slate-200 pt-6">
+          <div
+            role="region"
+            aria-live="polite"
+            aria-label="Đáp án và tự đánh giá độ nhớ"
+            className="mt-6 space-y-5 border-t border-slate-200 pt-6"
+          >
             {/* Đáp án đúng */}
             <div className="rounded-2xl border border-emerald-300 bg-emerald-50/70 p-4">
               <p className="text-xs font-bold uppercase tracking-wider text-emerald-900">
@@ -753,7 +759,7 @@ function ActiveRecallInner({
                   type="button"
                   disabled={isSubmittingRating}
                   onClick={() => void handleRateCard("again")}
-                  className="flex min-h-[60px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-rose-300 bg-rose-50 px-3 py-2.5 text-rose-950 transition-colors hover:bg-rose-100 disabled:opacity-50"
+                  className="flex min-h-[60px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-rose-300 bg-rose-50 px-3 py-2.5 text-rose-950 transition-colors hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 disabled:opacity-50"
                 >
                   <span className="text-sm font-extrabold">
                     {vi.study.review.ratings.again}
@@ -767,7 +773,7 @@ function ActiveRecallInner({
                   type="button"
                   disabled={isSubmittingRating}
                   onClick={() => void handleRateCard("hard")}
-                  className="flex min-h-[60px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-amber-300 bg-amber-50 px-3 py-2.5 text-amber-950 transition-colors hover:bg-amber-100 disabled:opacity-50"
+                  className="flex min-h-[60px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-amber-300 bg-amber-50 px-3 py-2.5 text-amber-950 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 disabled:opacity-50"
                 >
                   <span className="text-sm font-extrabold">
                     {vi.study.review.ratings.hard}
@@ -781,7 +787,7 @@ function ActiveRecallInner({
                   type="button"
                   disabled={isSubmittingRating}
                   onClick={() => void handleRateCard("good")}
-                  className="flex min-h-[60px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-teal-400 bg-teal-50 px-3 py-2.5 text-teal-950 transition-colors hover:bg-teal-100 disabled:opacity-50"
+                  className="flex min-h-[60px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-teal-400 bg-teal-50 px-3 py-2.5 text-teal-950 transition-colors hover:bg-teal-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600 focus-visible:ring-offset-2 disabled:opacity-50"
                 >
                   <span className="text-sm font-extrabold">
                     {vi.study.review.ratings.good}
@@ -795,7 +801,7 @@ function ActiveRecallInner({
                   type="button"
                   disabled={isSubmittingRating}
                   onClick={() => void handleRateCard("easy")}
-                  className="flex min-h-[60px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-emerald-400 bg-emerald-50 px-3 py-2.5 text-emerald-950 transition-colors hover:bg-emerald-100 disabled:opacity-50"
+                  className="flex min-h-[60px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-emerald-400 bg-emerald-50 px-3 py-2.5 text-emerald-950 transition-colors hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:opacity-50"
                 >
                   <span className="text-sm font-extrabold">
                     {vi.study.review.ratings.easy}
