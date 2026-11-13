@@ -30,6 +30,11 @@ export type Database = {
           display_name: string;
           default_print_header: Json;
           consented_at: string | null;
+          last_seen_at: string | null;
+          is_blocked: boolean;
+          blocked_reason: string | null;
+          blocked_at: string | null;
+          custom_ai_daily_limit: number | null;
           created_at: string;
         };
         Insert: {
@@ -38,6 +43,11 @@ export type Database = {
           display_name: string;
           default_print_header?: Json;
           consented_at?: string | null;
+          last_seen_at?: string | null;
+          is_blocked?: boolean;
+          blocked_reason?: string | null;
+          blocked_at?: string | null;
+          custom_ai_daily_limit?: number | null;
           created_at?: string;
         };
         Update: {
@@ -46,6 +56,11 @@ export type Database = {
           display_name?: string;
           default_print_header?: Json;
           consented_at?: string | null;
+          last_seen_at?: string | null;
+          is_blocked?: boolean;
+          blocked_reason?: string | null;
+          blocked_at?: string | null;
+          custom_ai_daily_limit?: number | null;
           created_at?: string;
         };
         Relationships: [];
@@ -1135,6 +1150,33 @@ export type Database = {
           resolved: number;
           ignored: number;
         };
+      };
+      update_last_seen: {
+        Args: Record<string, never>;
+        Returns: undefined;
+      };
+      get_admin_system_overview: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      get_admin_users_list: {
+        Args: {
+          p_search?: string | null;
+          p_role?: string | null;
+          p_status?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: Json;
+      };
+      admin_manage_user: {
+        Args: {
+          p_target_user_id: string;
+          p_action: string;
+          p_reason: string;
+          p_custom_limit?: number | null;
+        };
+        Returns: Json;
       };
     };
     Enums: {

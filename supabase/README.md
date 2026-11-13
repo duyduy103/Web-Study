@@ -14,6 +14,7 @@ Tài liệu này hướng dẫn cách khởi tạo và cập nhật cơ sở d�
 8. `supabase/migrations/20261112000008_phase3_step9_student_accounts.sql`: Mở app cho tài khoản học sinh/tự học (`handle_new_user` hỗ trợ `student|teacher`, `consented_at`, hàm `is_teacher()`, siết RLS `exams/exam_versions`, liên kết `learners.user_id`, RPC gộp hồ sơ ẩn danh, `ai_global_usage` + `consume_ai_quota_v2`, và `delete_my_account`).
 9. `supabase/migrations/20261113000009_scope_file_hash_per_owner.sql`: Cô lập kiểm tra trùng file theo từng người dùng `(owner_id, source_file_hash)`, dọn sạch các ràng buộc UNIQUE toàn cục trên hash để hai người khác nhau nạp cùng file đều thành công và không thấy thông tin của nhau.
 10. `supabase/migrations/20261113000010_step12_phase_d_admin_feedback.sql`: Bước 12 (Giai đoạn D) - Nền tảng bảng `admins`, hàm `is_admin()`, nhật ký `admin_audit_log`, bảng `feedback` và RPC `get_admin_feedback_counts`.
+11. `supabase/migrations/20261113000011_step12_phase_c_admin_users_and_stats.sql`: Bước 12 (Giai đoạn C) - Mở rộng `profiles` (`last_seen_at`, `is_blocked`, `blocked_reason`, `blocked_at`, `custom_ai_daily_limit`), RPC `update_last_seen`, `get_admin_system_overview`, `get_admin_users_list`, `admin_manage_user` (chặn tự khóa/xóa mình/admin khác).
 
 ---
 

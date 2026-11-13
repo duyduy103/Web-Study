@@ -47,6 +47,13 @@ export async function middleware(request: NextRequest) {
   const isDashboardRoute =
     pathname === "/dashboard" || pathname.startsWith("/dashboard/");
   const isAuthRoute = pathname === "/login" || pathname === "/signup";
+  const isBlockedRoute = pathname === "/blocked";
+  const isProtectedAppRoute =
+    isDashboardRoute ||
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/") ||
+    pathname === "/study" ||
+    pathname.startsWith("/study/");
 
   if (!user && isDashboardRoute) {
     const loginUrl = request.nextUrl.clone();
@@ -58,6 +65,37 @@ export async function middleware(request: NextRequest) {
     const dashboardUrl = request.nextUrl.clone();
     dashboardUrl.pathname = "/dashboard";
     return NextResponse.redirect(dashboardUrl);
+  }
+
+  // Kiểm tra tài khoản bị khóa và cập nhật last_seen_at
+  if (user && (isProtectedAppRoute || isBlockedRoute)) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_blocked")
+      .eq("id", user.id)
+      .single();
+
+    const isBlocked = Boolean((profile as { is_blocked?: boolean } | null)?.is_blocked);
+
+    if (isBlocked) {
+      if (!isBlockedRoute) {
+        const blockedUrl = request.nextUrl.clone();
+        blockedUrl.pathname = "/blocked";
+        return NextResponse.redirect(blockedUrl);
+      }
+    } else {
+      if (isBlockedRoute) {
+        const dashboardUrl = request.nextUrl.clone();
+        dashboardUrl.pathname = "/dashboard";
+        return NextResponse.redirect(dashboardUrl);
+      }
+      // Người dùng hợp lệ: cập nhật last_seen_at (tối đa 1 lần/giờ)
+      try {
+        await supabase.rpc("update_last_seen");
+      } catch {
+        // Bỏ qua lỗi ngầm
+      }
+    }
   }
 
   return supabaseResponse;
