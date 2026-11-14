@@ -257,6 +257,26 @@ export const vi = {
     timeoutError: "Yêu cầu tới AI quá thời gian chờ. Vui lòng thử lại.",
     invalidSchemaError:
       "Phản hồi từ AI không đúng cấu trúc chuẩn. Vui lòng thử lại.",
+    errors: {
+      invalidKey:
+        "Khóa API AI (GEMINI_API_KEY) chưa được cấu hình hoặc không hợp lệ.",
+      modelUnavailable:
+        "Mô hình AI hiện không khả dụng hoặc đang quá tải. Vui lòng thử lại sau ít phút.",
+      quota:
+        "Đã đạt giới hạn lượt gọi AI. Vui lòng đợi ít phút hoặc quay lại vào ngày mai.",
+      payloadTooLarge:
+        "Tệp PDF hoặc dữ liệu gửi lên vượt quá kích thước xử lý của AI. Vui lòng chia nhỏ tệp.",
+      schemaRejected:
+        "Phản hồi từ AI không đúng cấu trúc chuẩn. Vui lòng thử lại.",
+      appLimit:
+        "Tài khoản đã chạm giới hạn gói hoặc dung lượng tải lên.",
+      invalidRequest:
+        "Yêu cầu gửi lên không hợp lệ hoặc tệp PDF không đọc được.",
+      accountBlocked:
+        "Tài khoản của bạn đang bị tạm khóa nên không thể sử dụng AI.",
+      unknown:
+        "Không thể xử lý bằng AI lúc này sau khi đã thử lại. Vui lòng thử lại sau.",
+    },
     suggestion: {
       titlePdfOrImage: "Dùng AI để đọc file PDF / Ảnh này",
       titleLowConfidence:
@@ -1012,18 +1032,15 @@ export const vi = {
       "Chức năng này chỉ dành cho tài khoản Giáo viên. Tài khoản học sinh không có quyền truy cập.",
   },
   limits: {
-    maxSetsReachedPrefix:
-      "Tài khoản học sinh đạt giới hạn tối đa",
-    maxSetsReachedSuffix:
-      "bộ câu hỏi. Vui lòng xóa bớt bộ cũ trước khi tạo bộ mới.",
+    systemErrorFailClosed: "Hệ thống tạm thời gặp sự cố",
+    maxSetsReachedPrefix: "Tài khoản học sinh đạt giới hạn tối đa",
+    maxSetsReachedSuffix: "bộ câu hỏi. Vui lòng xóa bớt bộ cũ trước khi tạo bộ mới.",
     fileTooLargePrefix: "Kích thước file vượt quá giới hạn",
     fileTooLargeSuffix: "MB dành cho tài khoản của bạn.",
     pdfTooManyPagesPrefix: "File PDF vượt quá giới hạn",
     pdfTooManyPagesSuffix: "trang dành cho tài khoản của bạn.",
-    storageQuotaExceededPrefix:
-      "Tổng dung lượng lưu trữ đã đạt giới hạn",
-    storageQuotaExceededSuffix:
-      "MB. Vui lòng xóa bớt bộ câu hỏi cũ để giải phóng dung lượng.",
+    storageQuotaExceededPrefix: "Tổng dung lượng lưu trữ đã đạt giới hạn",
+    storageQuotaExceededSuffix: "MB. Vui lòng xóa bớt bộ câu hỏi cũ để giải phóng dung lượng.",
   },
   studentDashboard: {
     subtitle:
@@ -1200,6 +1217,7 @@ export const vi = {
       overview: "Thống kê",
       feedback: "Hộp thư góp ý",
       users: "Người dùng",
+      orders: "Đơn hàng & Gói",
       audit: "Nhật ký thao tác",
       backToApp: "← Về ứng dụng",
     },
@@ -1254,8 +1272,31 @@ export const vi = {
       aiTokens: "Tổng token AI đã dùng",
       aiCostEst: "Ước tính chi phí AI",
       storage: "Dung lượng Storage",
+      monthlyRevenue: "Doanh thu tháng này",
+      pendingOrders: "Đơn chờ thanh toán",
+      activePremiumUsers: "Người dùng Premium",
+      expiringSoonUsers: "Premium sắp hết hạn (7 ngày)",
+      needsReviewEvents: "Giao dịch cần xem",
       signupsChart: "Biểu đồ người dùng mới (30 ngày)",
       reviewsChart: "Biểu đồ lượt ôn tập FSRS (30 ngày)",
+    },
+    orders: {
+      pageTitle: "Quản lý Đơn hàng, Giao dịch & Cấu hình Gói",
+      pageSubtitle:
+        "Theo dõi đơn thanh toán VietQR/SePay, xử lý giao dịch lệch tiền/thiếu mã và chỉnh sửa giá/hạn mức gói.",
+      tabOrders: "Danh sách đơn hàng",
+      tabNeedsReview: "Giao dịch cần xem",
+      tabPlanConfig: "Cấu hình giá & hạn mức gói",
+      searchPlaceholder: "Tìm theo mã thanh toán (MQ...) hoặc email...",
+      filterStatusAll: "Tất cả trạng thái",
+      manualConfirmBtn: "Xác nhận thủ công",
+      refundOrderBtn: "Đánh dấu hoàn tiền",
+      attachOrderBtn: "Gắn vào đơn & kích hoạt",
+      ignoreEventBtn: "Bỏ qua giao dịch",
+      revokePremiumCheckbox: "Thu hồi luôn gói Premium hiện tại của người dùng này",
+      reasonPrompt: "Nhập ghi chú đối chiếu / lý do thực hiện (bắt buộc lưu nhật ký):",
+      savePlanConfigBtn: "Lưu cấu hình gói",
+      priceChangeNote: "Lưu ý: Thay đổi giá chỉ áp dụng cho các đơn hàng tạo mới; các đơn đang có giữ nguyên mức giá lúc tạo.",
     },
     users: {
       searchPlaceholder: "Tìm kiếm theo tên hiển thị, email...",
@@ -1302,13 +1343,45 @@ export const vi = {
   },
   plans: {
     free: "Miễn phí",
-    premium: "Cao cấp (Premium)",
+    premium: "Premium",
+    badgeFree: "Miễn phí",
+    badgePremium: "Premium",
+    daysRemainingPrefix: "còn",
+    daysRemainingSuffix: "ngày",
+    upgradeButton: "Nâng cấp",
+    upgradePremiumButton: "Nâng cấp Premium",
+    renewButton: "Gia hạn",
+    autoPaymentComingSoon: "Thanh toán tự động sắp có",
+    vatNote: "Giá niêm yết đã bao gồm thuế theo quy định hiện hành (nếu có).",
+    periodMonthLabel: "Gói Tháng",
+    periodYearLabel: "Gói Năm",
+    perMonthSuffix: "/ tháng",
+    perYearSuffix: "/ năm",
+    yearlySavingsBadgePrefix: "Tiết kiệm",
+    usageBar: {
+      aiRemainingPrefix: "Lượt AI hôm nay còn",
+      aiResetNote: "(làm mới lúc 0:00 giờ Việt Nam)",
+      questionSetsPrefix: "Bộ câu hỏi",
+      storagePrefix: "Dung lượng",
+      warning80Notice: "Bạn đã sử dụng từ 80% hạn mức của gói hiện tại.",
+      limit100Notice: "Bạn đã đạt 100% giới hạn của gói hiện tại.",
+      overMaxSetsKeptNotice:
+        "Các bộ câu hỏi hiện có của bạn đều được giữ nguyên (đọc, ôn tập, làm đề bình thường); chỉ tạm chặn tạo thêm bộ mới khi vượt giới hạn gói.",
+    },
+    expiringBanner: {
+      titlePrefix: "Gói Premium của bạn sẽ hết hạn sau",
+      titleSuffix: "ngày",
+      description:
+        "Hãy gia hạn để duy trì liên tục hạn mức AI, dung lượng lưu trữ và xuất đề Word (.docx).",
+    },
     dailySetLimitPrefix: "Gói Miễn phí chỉ hỗ trợ tạo tối đa",
     dailySetLimitSuffix: "bộ câu hỏi mỗi ngày. Nâng cấp Premium để tạo không giới hạn.",
     maxQuestionsPerSetPrefix: "Gói Miễn phí chỉ hỗ trợ tối đa",
     maxQuestionsPerSetSuffix: "câu mỗi bộ. Nâng cấp Premium để nạp bộ câu hỏi không giới hạn.",
     exportVersionLimitPrefix: "Gói của bạn chỉ hỗ trợ xuất tối đa",
-    exportVersionLimitSuffix: "mã đề. Nâng cấp Premium để xuất 4 mã đề trộn theo seed.",
+    exportVersionLimitSuffix: "mã đề. Nâng cấp Premium để xuất tối đa 8 mã đề trộn theo seed.",
+    docxExportRequiresPremium:
+      "Gói Miễn phí không hỗ trợ tải đề Word (.docx) (chỉ xem trước và in PDF A4). Nâng cấp lên gói Premium để tải file Word (.docx) chỉnh sửa được.",
     pricingTitle: "Bảng giá & Gói dịch vụ",
     pricingSubtitle:
       "Lựa chọn gói dịch vụ tối ưu với nhu cầu của bạn. Ứng dụng phương pháp khoa học Active Recall & FSRS để ghi nhớ bền vững.",
@@ -1316,18 +1389,24 @@ export const vi = {
     freePlanDesc:
       "Thích hợp cho học sinh tự ôn thi và giáo viên làm quen với nền tảng kiểm tra trực tuyến.",
     freePrice: "0đ",
-    freePeriod: "/ tháng",
-    premiumPlanTitle: "Gói Cao cấp (Premium)",
+    freePeriod: "/ trọn đời",
+    premiumPlanTitle: "Gói Premium",
     premiumPlanDesc:
-      "Tối ưu toàn diện cho giáo viên chuyên sâu, trung tâm và trường học cần lưu trữ và công suất tối đa.",
-    premiumPrice: "Trải nghiệm sớm",
-    premiumPeriod: "/ thành viên",
+      "Tối ưu toàn diện cho giáo viên chuyên sâu, học sinh ôn thi интенсив và lớp học cần lưu trữ, AI và xuất đề Word tối đa.",
+    premiumPrice: "39.000đ",
+    premiumPeriod: "/ tháng",
     upgradeRequestBtn: "Yêu cầu nâng cấp",
     currentPlanBadge: "Gói hiện tại của bạn",
     features: {
+      maxSets: "Số bộ câu hỏi được lưu",
+      aiQuota: "Lượt AI phân tích & sinh đề mỗi ngày",
+      maxFileMb: "Kích thước tối đa mỗi tệp tải lên",
+      maxPdfPages: "Số trang tối đa mỗi tệp PDF",
+      storageMb: "Tổng dung lượng lưu trữ tệp gốc",
+      printVersions: "Số mã đề trộn theo seed khi in đề",
+      docxExport: "Tải đề thi & đáp án định dạng Word (.docx)",
       questionsPerSet: "Số câu hỏi mỗi bộ",
       setsPerDay: "Số bộ câu hỏi tạo mỗi ngày",
-      aiQuota: "Lượt AI phân tích & sinh đề",
       exportVersions: "Xuất đề in Word (.docx)",
       studyFsrs: "Học tập khoa học FSRS & Active Recall",
       examManagement: "Giao bài trực tuyến & chấm điểm",
@@ -1335,12 +1414,78 @@ export const vi = {
       premiumQuestionsPerSet: "Không giới hạn",
       freeSetsPerDay: "1 bộ/ngày",
       premiumSetsPerDay: "Không giới hạn",
-      freeAiQuota: "30 lượt/ngày",
-      premiumAiQuota: "300 lượt/ngày",
-      freeExportVersions: "1 mã đề",
-      premiumExportVersions: "4 mã đề trộn theo seed",
+      freeAiQuota: "10 lượt/ngày",
+      premiumAiQuota: "50 lượt/ngày",
+      freeExportVersions: "4 mã đề (PDF A4)",
+      premiumExportVersions: "8 mã đề (Word .docx & PDF A4)",
       unlimited: "Không giới hạn",
       included: "Bao gồm đầy đủ",
+      notIncluded: "Chỉ hỗ trợ gói Premium",
+    },
+  },
+  notifications: {
+    bellLabel: "Thông báo",
+    title: "Thông báo",
+    markAllRead: "Đánh dấu tất cả đã đọc",
+    markRead: "Đã đọc",
+    empty: "Chưa có thông báo nào.",
+    unreadBadgeSuffix: "chưa đọc",
+  },
+  billing: {
+    pageTitle: "Thanh toán & Quản lý Gói dịch vụ",
+    pageSubtitle:
+      "Nâng cấp hoặc gia hạn gói Premium tự động qua chuyển khoản ngân hàng VietQR (SePay).",
+    currentPlanSection: "Gói hiện tại của bạn",
+    chooseCycleSection: "Chọn chu kỳ nâng cấp / gia hạn Premium",
+    pendingOrdersSection: "Đơn đang chờ thanh toán",
+    orderHistorySection: "Lịch sử đơn hàng",
+    createOrderMonthBtn: "Chọn gói Tháng",
+    createOrderYearBtn: "Chọn gói Năm",
+    viewQrBtn: "Xem mã QR thanh toán",
+    cancelOrderBtn: "Hủy đơn",
+    cancellingOrderBtn: "Đang hủy...",
+    noOrdersYet: "Bạn chưa có đơn hàng nào.",
+    consecutivelyExtendNote:
+      "Nếu bạn đang còn hạn Premium, thời gian mới sẽ được cộng nối tiếp vào ngày hết hạn hiện tại.",
+    statusLabels: {
+      pending: "Chờ chuyển khoản",
+      paid: "Đã thanh toán",
+      expired: "Đã hết hạn (48h)",
+      cancelled: "Đã hủy",
+      refunded: "Đã hoàn tiền",
+    },
+    checkout: {
+      pageTitle: "Thanh toán đơn hàng bằng VietQR",
+      backToBilling: "← Quay lại trang Thanh toán & Gói",
+      scanQrTitle: "Quét mã VietQR bằng ứng dụng Ngân hàng",
+      manualTransferTitle: "Hoặc chuyển khoản thủ công theo thông tin dưới đây",
+      bankNameLabel: "Ngân hàng",
+      accountNumberLabel: "Số tài khoản",
+      accountNameLabel: "Chủ tài khoản",
+      amountLabel: "Số tiền cần chuyển",
+      transferContentLabel: "Nội dung chuyển khoản (Bắt buộc chính xác)",
+      copyBtn: "Sao chép",
+      copiedBtn: "Đã chép ✓",
+      keepContentReminder: "⚠️ Giữ nguyên nội dung chuyển khoản",
+      keepContentDesc:
+        "Hệ thống tự động đối chiếu theo đúng mã nội dung chuyển khoản và số tiền để kích hoạt gói ngay lập tức.",
+      waitInstruction: "⏱️ Chuyển xong chờ 1-2 phút",
+      waitInstructionDesc:
+        "Trang này tự động kiểm tra trạng thái đơn mỗi vài giây. Bạn không cần tải lại trang.",
+      countdownLabel: "Đơn hàng tự hết hạn sau:",
+      pollingStatusLabel: "Đang chờ xác nhận giao dịch từ ngân hàng...",
+      successTitle: "Thanh toán thành công! 🎉",
+      successSubtitle:
+        "Gói Premium của bạn đã được kích hoạt tự động. Cảm ơn bạn đã đồng hành cùng MemoQuiz!",
+      goToDashboardBtn: "Về Bảng điều khiển →",
+      expiredTitle: "Đơn hàng đã quá thời hạn 48 giờ",
+      expiredDesc:
+        "Nếu bạn đã chuyển khoản cho đơn này, hệ thống vẫn tự động kích hoạt ngay khi nhận được tiền. Nếu chưa chuyển, vui lòng tạo đơn mới.",
+      cancelledTitle: "Đơn hàng này đã bị hủy",
+      cancelledDesc:
+        "Vui lòng không chuyển khoản vào mã của đơn đã hủy. Bạn có thể tạo đơn mới tại trang Thanh toán.",
+      bankConfigMissingWarning:
+        "Chưa cấu hình đầy đủ thông tin tài khoản ngân hàng (BANK_CODE, BANK_ACCOUNT_NUMBER, BANK_ACCOUNT_NAME) trong biến môi trường.",
     },
   },
   blocked: {

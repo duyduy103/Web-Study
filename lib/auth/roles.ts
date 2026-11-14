@@ -21,9 +21,10 @@ export async function getAuthenticatedProfile(
 ): Promise<AuthenticatedProfile | null> {
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (error || !user) {
     return null;
   }
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthenticatedProfile, isTeacherRole } from "@/lib/auth/roles";
+import { getUserEntitlements } from "@/lib/entitlements";
 import { getUserAiQuotaStatus } from "@/lib/ai/quota-and-cache";
 import {
   buildDailyStudyQueue,
@@ -22,6 +23,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CreateSetButton } from "@/components/features/dashboard/create-set-button";
+import { PlanBadge } from "@/components/features/dashboard/plan-badge";
+import { NotificationBell } from "@/components/features/dashboard/notification-bell";
+import { DashboardUsageBar } from "@/components/features/dashboard/dashboard-usage-bar";
 
 export default async function DashboardPage(props: {
   searchParams?: Promise<{ confirmed?: string }>;
@@ -40,12 +44,14 @@ export default async function DashboardPage(props: {
   const isTeacher = isTeacherRole(role);
 
   const [
+    entitlements,
     quotaStatus,
     { data: questionSets, error: setsError },
     { data: examsDataRaw },
     studySummaryRes,
     selfAttemptsRes,
   ] = await Promise.all([
+    getUserEntitlements(supabase, user.id),
     getUserAiQuotaStatus(supabase, user.id, role),
     supabase
       .from("question_sets")
@@ -204,11 +210,23 @@ export default async function DashboardPage(props: {
     { total: number; approved: number; needsReview: number }
   >();
 
+  let storageBytesUsed = 0;
+
   if (setIds.length > 0) {
-    const { data: questionsMeta } = await supabase
-      .from("questions")
-      .select("set_id, status, confidence, warnings, ai_generated")
-      .in("set_id", setIds);
+    const [{ data: questionsMeta }, { data: sourceFilesMeta }] = await Promise.all([
+      supabase
+        .from("questions")
+        .select("set_id, status, confidence, warnings, ai_generated")
+        .in("set_id", setIds),
+      supabase
+        .from("source_files")
+        .select("file_size_bytes")
+        .in("set_id", setIds),
+    ]);
+
+    for (const sf of sourceFilesMeta ?? []) {
+      storageBytesUsed += Number(sf.file_size_bytes ?? 0);
+    }
 
     for (const q of questionsMeta ?? []) {
       const current = statsBySetId.get(q.set_id) ?? {
@@ -239,17 +257,19 @@ export default async function DashboardPage(props: {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-600 text-base font-bold text-white shadow-2xs">
               MQ
             </div>
-            <div>
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-base font-bold tracking-tight text-slate-900">
                 {vi.app.name}
               </span>
-              <span className="ml-2 rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-medium text-teal-800">
+              <span className="rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-medium text-teal-800">
                 {isTeacher ? vi.roles.teacherLabel : vi.roles.studentLabel}
               </span>
+              <PlanBadge entitlements={entitlements} showRemainingDays />
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            <NotificationBell />
             <Link
               href="/dashboard/account"
               className="inline-flex min-h-[40px] items-center rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 sm:text-sm"
@@ -298,7 +318,7 @@ export default async function DashboardPage(props: {
               <strong className="underline underline-offset-2">
                 {quotaStatus.remainingToday}/{quotaStatus.dailyLimit}
               </strong>{" "}
-              {vi.dashboard.aiQuotaUnit}
+              {vi.dashboard.aiQuotaUnit} ({vi.plans.usageBar.aiResetNote})
             </p>
           </div>
 
@@ -306,6 +326,14 @@ export default async function DashboardPage(props: {
             <CreateSetButton />
           </div>
         </section>
+
+        <DashboardUsageBar
+          entitlements={entitlements}
+          aiRemainingToday={quotaStatus.remainingToday}
+          aiDailyLimit={quotaStatus.dailyLimit}
+          setCount={sets.length}
+          storageBytes={storageBytesUsed}
+        />
 
         {!isTeacher ? (
           <section className="rounded-3xl border-2 border-[var(--space-border-strong)] bg-[var(--space-surface)] p-5 shadow-sm transition-all sm:p-7">

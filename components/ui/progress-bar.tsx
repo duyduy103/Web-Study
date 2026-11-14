@@ -8,7 +8,7 @@ export interface ProgressBarProps extends React.HTMLAttributes<HTMLDivElement> {
   max?: number;
   label?: string;
   showPercent?: boolean;
-  variant?: "default" | "study" | "amber" | "emerald";
+  variant?: "default" | "study" | "amber" | "emerald" | "danger";
   size?: "sm" | "default" | "lg";
 }
 
@@ -17,6 +17,7 @@ const variantTrackClasses = {
   study: "bg-[var(--space-surface-muted,#dcf0ea)] border border-[var(--space-border,#cad9d2)]",
   amber: "bg-[var(--space-reward-bg,#fffbeb)] border border-[var(--space-reward-border,#fcd34d)]",
   emerald: "bg-emerald-100",
+  danger: "bg-red-100",
 };
 
 const variantFillClasses = {
@@ -24,6 +25,7 @@ const variantFillClasses = {
   study: "bg-gradient-to-r from-[var(--space-primary,#0a4f43)] to-[var(--space-accent,#c2410c)] shadow-xs",
   amber: "bg-[var(--space-accent,#c2410c)]",
   emerald: "bg-emerald-600",
+  danger: "bg-red-600",
 };
 
 const sizeClasses = {

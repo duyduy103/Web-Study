@@ -59,12 +59,30 @@ export async function POST(request: Request) {
 
     const input = parsed.data;
 
-    // Kiểm tra quyền hạn gói (Entitlements: Free chỉ 1 mã đề, Premium lên tới 4 mã đề)
-    const entitlements = await getUserEntitlements(supabase, user.id);
-    if (input.versionCount > entitlements.limits.max_export_versions) {
+    // Kiểm tra quyền hạn gói (Fail-closed: lỗi DB -> chặn ngay)
+    let entitlements;
+    try {
+      entitlements = await getUserEntitlements(supabase, user.id, {
+        strict: true,
+      });
+    } catch {
+      return NextResponse.json(
+        { error: vi.limits.systemErrorFailClosed },
+        { status: 503 }
+      );
+    }
+
+    const maxVersions = entitlements.limits.max_print_versions;
+    if (input.versionCount > maxVersions) {
+      const planLabel = entitlements.is_premium
+        ? "Gói Premium"
+        : "Gói miễn phí";
+      const upgradeNote = entitlements.is_premium
+        ? ""
+        : " Nâng cấp lên gói Premium để trộn tối đa 8 mã đề và tải tệp Word (.docx).";
       return NextResponse.json(
         {
-          error: `${vi.plans.exportVersionLimitPrefix} ${entitlements.limits.max_export_versions} ${vi.plans.exportVersionLimitSuffix}`,
+          error: `${planLabel} chỉ hỗ trợ trộn tối đa ${maxVersions} mã đề (bạn đang chọn ${input.versionCount}/${maxVersions} mã đề).${upgradeNote}`,
         },
         { status: 403 }
       );

@@ -11,6 +11,7 @@ import type {
   ExamQuestionSnapshot,
   ExamQuestionWithSnapshot,
 } from "@/lib/grading/types";
+import { getUserEntitlements } from "@/lib/entitlements";
 import { vi } from "@/lib/i18n/vi";
 
 interface RouteParams {
@@ -26,6 +27,28 @@ export async function GET(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: auth.error }, { status: auth.status });
     }
     const user = auth.profile.user;
+
+    // Kiểm tra quyền xuất Word (.docx) theo gói (Fail-closed)
+    let entitlements;
+    try {
+      entitlements = await getUserEntitlements(supabase, user.id, {
+        strict: true,
+      });
+    } catch {
+      return NextResponse.json(
+        { error: vi.limits.systemErrorFailClosed },
+        { status: 503 }
+      );
+    }
+
+    if (!entitlements.limits.can_export_docx) {
+      return NextResponse.json(
+        {
+          error: vi.plans.docxExportRequiresPremium,
+        },
+        { status: 403 }
+      );
+    }
 
     // Kiểm tra chặt quyền sở hữu của giáo viên trên server
     const { data: exam } = await supabase

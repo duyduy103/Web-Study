@@ -14,8 +14,9 @@ export default async function AdminLayout({
   // Bắt buộc quyền Admin, người dùng thường hoặc khách sẽ nhận HTTP 404
   const { user, supabase } = await requireAdmin();
 
-  // Đếm phản hồi mới
+  // Đếm phản hồi mới & giao dịch thanh toán cần xem (needs_review)
   let newFeedbackCount = 0;
+  let needsReviewPaymentsCount = 0;
   try {
     const { data: counts } = await supabase.rpc("get_admin_feedback_counts");
     if (counts && typeof counts === "object" && "new_count" in counts) {
@@ -28,6 +29,16 @@ export default async function AdminLayout({
       .select("id", { count: "exact", head: true })
       .eq("status", "new");
     newFeedbackCount = count ?? 0;
+  }
+
+  try {
+    const { count } = await supabase
+      .from("payment_events")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "needs_review");
+    needsReviewPaymentsCount = count ?? 0;
+  } catch {
+    needsReviewPaymentsCount = 0;
   }
 
   return (
@@ -71,6 +82,17 @@ export default async function AdminLayout({
                 className="rounded-xl px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
               >
                 {vi.admin.nav.users}
+              </Link>
+              <Link
+                href="/admin/orders"
+                className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+              >
+                <span>{vi.admin.nav.orders}</span>
+                {needsReviewPaymentsCount > 0 ? (
+                  <span className="rounded-full bg-amber-400 px-1.5 py-0.2 text-[10px] font-black text-slate-950">
+                    {needsReviewPaymentsCount}
+                  </span>
+                ) : null}
               </Link>
               <Link
                 href="/admin/audit"

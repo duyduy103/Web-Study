@@ -1,12 +1,19 @@
 import "server-only";
 import crypto from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database, Json, UserRole } from "@/lib/supabase/types";
+import type {
+  Database,
+  Json,
+  UserEntitlements,
+  UserRole,
+} from "@/lib/supabase/types";
+import { getAiGlobalDailyLimit } from "@/lib/ai/limits";
 import {
-  getAiDailyLimitForRole,
-  getAiGlobalDailyLimit,
-} from "@/lib/ai/limits";
-import { getUserEntitlements } from "@/lib/entitlements";
+  DEFAULT_FREE_LIMITS,
+  DEFAULT_PREMIUM_LIMITS,
+  getUserEntitlements,
+  getVietnamDateString,
+} from "@/lib/entitlements";
 import { vi } from "@/lib/i18n/vi";
 
 export interface QuotaStatus {
@@ -42,52 +49,27 @@ export function buildAiCacheKey(params: {
   return hash.digest("hex");
 }
 
-async function resolveUserRole(
-  supabase: SupabaseClient<Database>,
-  userId?: string
-): Promise<UserRole> {
-  let targetId = userId;
-  if (!targetId && supabase.auth?.getUser) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    targetId = user?.id;
-  }
-  if (!targetId) return "student";
-
-  try {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", targetId)
-      .maybeSingle();
-
-    return profile?.role === "teacher" ? "teacher" : "student";
-  } catch {
-    return "student";
-  }
-}
-
 export async function getUserAiQuotaStatus(
   supabase: SupabaseClient<Database>,
   userId: string,
-  knownRole?: UserRole
+  _knownRole?: UserRole
 ): Promise<QuotaStatus> {
-  let dailyLimit: number;
+  void _knownRole;
+  let dailyLimit: number = DEFAULT_FREE_LIMITS.ai_daily;
   try {
     const entitlements = await getUserEntitlements(supabase, userId);
-    dailyLimit = entitlements.limits.ai_daily_limit;
+    dailyLimit = entitlements.limits.ai_daily;
   } catch {
-    const role = knownRole ?? (await resolveUserRole(supabase, userId));
-    dailyLimit = getAiDailyLimitForRole(role);
+    dailyLimit = DEFAULT_FREE_LIMITS.ai_daily;
   }
-  const today = new Date().toISOString().slice(0, 10);
+
+  const todayVn = getVietnamDateString();
 
   const { data } = await supabase
     .from("ai_usage")
     .select("calls")
     .eq("user_id", userId)
-    .eq("date", today)
+    .eq("date", todayVn)
     .maybeSingle();
 
   const usedToday = data?.calls ?? 0;
@@ -132,37 +114,60 @@ export async function saveAiCache(params: {
 }
 
 /**
- * Tăng bộ đếm hạn mức AI nguyên tử thông qua hàm RPC consume_ai_quota.
- * Nếu vượt hạn mức ngày, ném lỗi tiếng Việt thân thiện.
+ * Tăng bộ đếm hạn mức AI nguyên tử thông qua hàm RPC consume_ai_quota_v2.
+ * Hạn mức AI do GÓI quyết định (hoặc custom_ai_daily_limit ngoại lệ của admin).
+ * Kiểm tra fail-closed: nếu lỗi DB/RPC thì chặn và báo "Hệ thống tạm thời gặp sự cố".
  */
 export async function consumeUserAiQuotaOrThrow(
   supabase: SupabaseClient<Database>,
-  knownRole?: UserRole,
+  _knownRole?: UserRole,
   userId?: string
 ): Promise<QuotaConsumeResult> {
-  let userLimit: number;
-  if (userId) {
+  void _knownRole;
+  let resolvedUserId = userId;
+  if (!resolvedUserId && supabase.auth?.getUser) {
     try {
-      const entitlements = await getUserEntitlements(supabase, userId);
-      userLimit = entitlements.limits.ai_daily_limit;
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      resolvedUserId = user?.id;
     } catch {
-      const role = knownRole ?? (await resolveUserRole(supabase, userId));
-      userLimit = getAiDailyLimitForRole(role);
+      // ignore
     }
-  } else {
-    const role = knownRole ?? (await resolveUserRole(supabase, userId));
-    userLimit = getAiDailyLimitForRole(role);
   }
+
+  let entitlements: UserEntitlements;
+  try {
+    entitlements = await getUserEntitlements(supabase, resolvedUserId, {
+      strict: Boolean(resolvedUserId),
+    });
+  } catch {
+    throw new Error(vi.limits.systemErrorFailClosed);
+  }
+
+  const userLimit = entitlements.limits.ai_daily;
   const globalLimit = getAiGlobalDailyLimit();
 
-  const { data, error } = await supabase.rpc("consume_ai_quota_v2", {
+  let { data, error } = await supabase.rpc("consume_ai_quota_v2", {
     p_user_limit: userLimit,
     p_global_limit: globalLimit,
     p_tokens: 0,
   });
 
   if (error) {
-    throw new Error(vi.ai.callFailed);
+    console.warn(
+      `[AI Quota] consume_ai_quota_v2 lỗi (${error.code || "RPC_ERR"}), chuyển sang consume_ai_quota dự phòng.`
+    );
+    const fallback = await supabase.rpc("consume_ai_quota", {
+      p_daily_limit: userLimit,
+      p_tokens: 0,
+    });
+    data = fallback.data;
+    error = fallback.error;
+  }
+
+  if (error) {
+    throw new Error(vi.limits.systemErrorFailClosed);
   }
 
   const payload = data as {
@@ -171,13 +176,26 @@ export async function consumeUserAiQuotaOrThrow(
     calls?: number;
     tokens?: number;
     remaining?: number;
+    daily_limit?: number;
   } | null;
 
   if (!payload || payload.allowed !== true) {
     if (payload?.reason === "GLOBAL_LIMIT") {
       throw new Error(vi.ai.globalQuotaExhausted);
     }
-    throw new Error(vi.ai.quotaExhausted);
+    if (payload?.reason === "ACCOUNT_BLOCKED") {
+      throw new Error(vi.ai.errors.accountBlocked);
+    }
+
+    const effectiveLimit = payload?.daily_limit ?? userLimit;
+    const planLabel = entitlements.is_premium ? "Gói Premium" : "Gói miễn phí";
+    const upgradeBenefit = entitlements.is_premium
+      ? "Lượt AI sẽ tự động làm mới lúc 0:00 giờ Việt Nam."
+      : `Nâng cấp lên gói Premium để có ${DEFAULT_PREMIUM_LIMITS.ai_daily} lượt AI/ngày (làm mới lúc 0:00 giờ Việt Nam).`;
+
+    throw new Error(
+      `Bạn đã dùng hết lượt AI hôm nay, quay lại vào ngày mai. ${planLabel} có tối đa ${effectiveLimit} lượt AI/ngày (đã dùng ${effectiveLimit}/${effectiveLimit}). ${upgradeBenefit}`
+    );
   }
 
   return {
@@ -199,4 +217,3 @@ export async function recordUserAiTokens(
     p_tokens: Math.floor(tokens),
   });
 }
-

@@ -4,7 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getAuthenticatedProfile } from "@/lib/auth/roles";
 import { enforceAccountImportLimits } from "@/lib/limits";
 import { vi } from "@/lib/i18n/vi";
+import { classifyAiError } from "@/lib/ai/errors";
 import { runAiExtractBatch } from "@/lib/ai/tasks";
+import { countPdfPages } from "@/lib/parsing/extract-text";
 import { validateAndReadSource } from "@/lib/sets/import-service";
 
 const parseBatchMetaSchema = z.object({
@@ -20,7 +22,7 @@ export async function POST(request: Request) {
 
     if (!authProfile) {
       return NextResponse.json(
-        { error: vi.importSet.errors.unauthorized },
+        { error: vi.importSet.errors.unauthorized, code: "invalid_request" },
         { status: 401 }
       );
     }
@@ -35,8 +37,11 @@ export async function POST(request: Request) {
     });
 
     if (!metaParsed.success) {
+      console.error(
+        "[AI parse-batch] code=invalid_request original=META_VALIDATION_FAILED status=400"
+      );
       return NextResponse.json(
-        { error: vi.ai.callFailed },
+        { error: vi.ai.errors.invalidRequest, code: "invalid_request" },
         { status: 400 }
       );
     }
@@ -64,11 +69,17 @@ export async function POST(request: Request) {
       typeof pastedTextEntry === "string" ? pastedTextEntry : null;
 
     const source = await validateAndReadSource(file, pastedText);
+    const pdfPageCount =
+      source.mimeType === "application/pdf"
+        ? countPdfPages(source.buffer)
+        : null;
+
     await enforceAccountImportLimits({
       supabase,
       userId: user.id,
       role,
       newFileSizeBytes: source.buffer.byteLength,
+      pdfPageCount,
     });
 
     const isMediaFile =
@@ -101,9 +112,14 @@ export async function POST(request: Request) {
 
     return NextResponse.json(result);
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : vi.ai.callFailed;
-    return NextResponse.json({ error: message }, { status: 400 });
+    const classified = classifyAiError(err);
+    console.error(
+      `[AI parse-batch] code=${classified.code} original=${classified.originalCode} status=${classified.httpStatus}`
+    );
+    return NextResponse.json(
+      { error: classified.message, code: classified.code },
+      { status: classified.httpStatus }
+    );
   }
 }
 

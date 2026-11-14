@@ -3,10 +3,13 @@ import { beforeEach, describe, expect, it, vi as vitest } from "vitest";
 // Mock module server-only để chạy trong môi trường Vitest Node
 vitest.mock("server-only", () => ({}));
 
+import fs from "fs";
+import path from "path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import type { ParsedQuestion } from "@/lib/parsing/types";
 import { callGeminiStructured } from "@/lib/ai/call-structured";
+import { AiClassifiedError, classifyAiError } from "@/lib/ai/errors";
 import {
   aiExtractedQuestionsResponseZodSchema,
   geminiExtractQuestionsResponseSchema,
@@ -15,7 +18,9 @@ import {
 import {
   fixLowConfidenceQuestionsWithAi,
   generateDistractorsBatchWithAi,
+  runAiExtractBatch,
 } from "@/lib/ai/tasks";
+import { validateAndReadSource } from "@/lib/sets/import-service";
 import { vi } from "@/lib/i18n/vi";
 
 interface MockSupabaseState {
@@ -515,6 +520,152 @@ describe("MemoQuiz AI Infrastructure & Tasks (Mocked Unit Tests)", () => {
     ).rejects.toThrow(
       "AI sinh phương án nhiễu trùng với đáp án đúng của giáo viên."
     );
+  });
+
+  it("7. Hồi quy đường PDF: tự động fallback sang consume_ai_quota khi consume_ai_quota_v2 lỗi 42703 (updated_at) và chuẩn hóa MIME PDF", async () => {
+    const pdfPath = path.resolve(
+      process.cwd(),
+      "samples",
+      "08_de_cuong_text_pdf.pdf"
+    );
+    const pdfBuffer = fs.readFileSync(pdfPath);
+    const fakePdfFile = new File([pdfBuffer], "08_de_cuong_text_pdf.pdf", {
+      type: "application/octet-stream",
+    });
+
+    const source = await validateAndReadSource(fakePdfFile, null);
+    expect(source.mimeType).toBe("application/pdf");
+
+    let v2Called = 0;
+    let v1FallbackCalled = 0;
+    let receivedMimeType = "";
+
+    const { supabase: baseSupabase } = createMockSupabase();
+    const supabaseWithBrokenV2 = {
+      ...baseSupabase,
+      rpc: async (fnName: string) => {
+        if (fnName === "consume_ai_quota_v2") {
+          v2Called += 1;
+          return {
+            data: null,
+            error: {
+              code: "42703",
+              message: 'column "updated_at" of relation "ai_usage" does not exist',
+            },
+          };
+        }
+        if (fnName === "consume_ai_quota") {
+          v1FallbackCalled += 1;
+          return {
+            data: { allowed: true, calls: 1, tokens: 0, remaining: 29 },
+            error: null,
+          };
+        }
+        return { data: null, error: null };
+      },
+    } as unknown as SupabaseClient<Database>;
+
+    const result = await runAiExtractBatch({
+      supabase: supabaseWithBrokenV2,
+      userId: "teacher-pdf-1",
+      media: {
+        mimeType: source.mimeType,
+        base64Data: source.buffer.toString("base64"),
+      },
+      contextHint: "Chỉ trích xuất các câu hỏi thuộc từ Trang 1 đến Trang 1",
+      mode: "whole",
+      customGenerator: async ({ media }) => {
+        receivedMimeType = media?.mimeType ?? "";
+        return {
+          text: JSON.stringify({
+            questions: [
+              {
+                type: "mcq",
+                stem: "Ngôn ngữ nào dùng để định nghĩa cấu trúc bảng?",
+                choices: [
+                  { text: "DDL", isCorrect: true },
+                  { text: "DML", isCorrect: false },
+                ],
+                confidence: 1,
+                warnings: [],
+                sourceRef: "Trang 1, Câu 1",
+              },
+            ],
+          }),
+          totalTokens: 2029,
+        };
+      },
+    });
+
+    expect(v2Called).toBe(1);
+    expect(v1FallbackCalled).toBe(1);
+    expect(receivedMimeType).toBe("application/pdf");
+    expect(result.questions).toHaveLength(1);
+    expect(result.questions[0].stem).toContain("định nghĩa cấu trúc bảng");
+  });
+
+  it("8. Phân loại đủ 8 mã lỗi cho đường PDF và không retry các lỗi không thể phục hồi", async () => {
+    const { supabase } = createMockSupabase();
+
+    // Kiểm tra không retry lỗi invalid_key (401/API_KEY_INVALID) trên đường PDF
+    let attempts = 0;
+    await expect(
+      runAiExtractBatch({
+        supabase,
+        userId: "teacher-pdf-err",
+        media: { mimeType: "application/pdf", base64Data: "JVBERi0xLjQ=" },
+        mode: "whole",
+        customGenerator: async () => {
+          attempts += 1;
+          const err = new Error("API key not valid. Please pass a valid API key.") as Error & {
+            status?: number;
+            code?: string;
+          };
+          err.status = 400;
+          err.code = "API_KEY_INVALID";
+          throw err;
+        },
+      })
+    ).rejects.toThrow(AiClassifiedError);
+    expect(attempts).toBe(1);
+
+    // Kiểm tra đủ 8 mã phân loại lỗi: invalid_key, model_unavailable, quota, payload_too_large, schema_rejected, app_limit, invalid_request, unknown
+    expect(
+      classifyAiError({ status: 401, message: "API_KEY_INVALID" }).code
+    ).toBe("invalid_key");
+    expect(
+      classifyAiError({
+        status: 503,
+        message: "This model is currently experiencing high demand.",
+      }).code
+    ).toBe("model_unavailable");
+    expect(
+      classifyAiError({ status: 429, message: "RESOURCE_EXHAUSTED" }).code
+    ).toBe("quota");
+    expect(
+      classifyAiError({
+        status: 413,
+        message: "Request payload size exceeds the limit",
+      }).code
+    ).toBe("payload_too_large");
+    expect(
+      classifyAiError(new Error(vi.ai.invalidSchemaError)).code
+    ).toBe("schema_rejected");
+    expect(
+      classifyAiError(
+        new Error(`${vi.limits.pdfTooManyPagesPrefix} 60 ${vi.limits.pdfTooManyPagesSuffix}`)
+      ).code
+    ).toBe("app_limit");
+    expect(
+      classifyAiError({
+        status: 400,
+        code: "INVALID_ARGUMENT",
+        message: "Unable to process input image/pdf",
+      }).code
+    ).toBe("invalid_request");
+    expect(
+      classifyAiError(new Error("Socket hang up")).code
+    ).toBe("unknown");
   });
 });
 

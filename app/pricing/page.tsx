@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { getUserEntitlements } from "@/lib/entitlements";
+import { getUserEntitlements, getPlansCatalog } from "@/lib/entitlements";
 import { PricingClient } from "@/components/features/pricing/pricing-client";
 import { vi } from "@/lib/i18n/vi";
 
@@ -9,11 +9,14 @@ export const metadata: Metadata = {
   description: vi.plans.pricingSubtitle,
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function PricingPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const [{ data: { user } }, plansCatalog] = await Promise.all([
+    supabase.auth.getUser(),
+    getPlansCatalog(supabase),
+  ]);
 
   let entitlements = null;
   if (user) {
@@ -24,6 +27,7 @@ export default async function PricingPage() {
     <main className="min-h-screen bg-slate-50 py-8">
       <PricingClient
         currentEntitlements={entitlements}
+        plansCatalog={plansCatalog}
         isLoggedIn={Boolean(user)}
       />
     </main>

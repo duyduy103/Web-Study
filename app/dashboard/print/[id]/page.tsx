@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthenticatedProfile, isTeacherRole } from "@/lib/auth/roles";
+import { getUserEntitlements } from "@/lib/entitlements";
 import { buildPrintExamPackage } from "@/lib/export";
 import type { PrintExamHeaderInfo } from "@/lib/export/types";
 import type {
@@ -148,11 +149,14 @@ export default async function PrintExamPreviewPage({
       existingVersions.length > 0 ? existingVersions : undefined,
   });
 
+  const entitlements = await getUserEntitlements(supabase, user.id);
+
   return (
     <PrintExamPreviewWorkspace
       examId={exam.id}
       setId={exam.set_id}
       pkg={pkg}
+      canExportDocx={entitlements.limits.can_export_docx}
     />
   );
 }

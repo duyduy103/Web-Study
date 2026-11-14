@@ -10,6 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ProgressBar } from "@/components/ui/progress-bar";
+import { PlanBadge } from "@/components/features/dashboard/plan-badge";
+import { NotificationBell } from "@/components/features/dashboard/notification-bell";
+import { getRemainingSubscriptionDays, DEFAULT_FREE_LIMITS } from "@/lib/entitlements";
 import {
   calculatePasswordStrength,
 } from "@/lib/auth/password-rules";
@@ -332,68 +335,91 @@ export function AccountClient({
     }
   }
 
+  const limits = entitlements?.limits ?? DEFAULT_FREE_LIMITS;
+  const remainingDays = entitlements?.is_premium
+    ? getRemainingSubscriptionDays(entitlements.period_end)
+    : null;
+  const aiCallsUsed = Math.max(0, quotaStatus.dailyLimit - quotaStatus.remainingToday);
+  const aiRatio = quotaStatus.dailyLimit > 0 ? aiCallsUsed / quotaStatus.dailyLimit : 0;
+  const setRatio = limits.max_sets > 0 ? usageStats.setCount / limits.max_sets : 0;
+  const storageRatio = limits.storage_mb > 0 ? usageStats.storageMb / limits.storage_mb : 0;
+
   return (
     <div className="min-h-screen bg-[var(--background)] px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-4xl space-y-6">
-        <div>
-          <Link
-            href="/dashboard"
-            className="text-xs font-bold text-[var(--muted)] hover:text-[var(--foreground)]"
-          >
-            ← Bảng điều khiển
-          </Link>
-          <h1 className="mt-1 text-2xl font-black text-[var(--heading)] sm:text-3xl">
-            {vi.settings.pageTitle}
-          </h1>
-          <p className="mt-0.5 text-xs text-[var(--muted)]">
-            {vi.settings.pageSubtitle}
-          </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <Link
+              href="/dashboard"
+              className="text-xs font-bold text-[var(--muted)] hover:text-[var(--foreground)]"
+            >
+              ← Bảng điều khiển
+            </Link>
+            <div className="mt-1 flex flex-wrap items-center gap-2.5">
+              <h1 className="text-2xl font-black text-[var(--heading)] sm:text-3xl">
+                {vi.settings.pageTitle}
+              </h1>
+              <PlanBadge entitlements={entitlements} showRemainingDays />
+            </div>
+            <p className="mt-0.5 text-xs text-[var(--muted)]">
+              {vi.settings.pageSubtitle}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+          </div>
         </div>
 
-        {/* Khối 1: Gói và mức sử dụng */}
-        <Card className="rounded-3xl border border-[var(--space-border)] bg-[var(--space-surface)] shadow-sm">
+        {/* Khối 1: Gói hiện tại nổi bật và mức sử dụng */}
+        <Card
+          className={`rounded-3xl border-2 shadow-sm ${
+            entitlements?.is_premium
+              ? "border-amber-400 bg-gradient-to-br from-amber-50/50 via-white to-amber-50/20"
+              : "border-teal-500 bg-[var(--space-surface)]"
+          }`}
+        >
           <CardHeader className="pb-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <CardTitle className="text-base font-bold text-[var(--heading)] flex items-center gap-2">
                   <span>{vi.settings.planSectionTitle}</span>
+                  <span className="rounded-full bg-teal-600 text-white px-2.5 py-0.5 text-[10px] font-extrabold">
+                    {vi.plans.currentPlanBadge}
+                  </span>
                   {entitlements?.is_premium ? (
                     <span className="rounded-full bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 text-[10px] font-black tracking-wide uppercase">
                       PRO
                     </span>
                   ) : null}
                 </CardTitle>
-                <CardDescription className="text-xs">
+                <CardDescription className="text-xs pt-0.5">
                   {vi.settings.currentPlan}{" "}
                   <strong className="font-extrabold text-[var(--space-primary)]">
                     {entitlements?.plan_name ?? vi.settings.planFree}
                   </strong>{" "}
                   • {vi.settings.planExpiry}{" "}
                   {entitlements?.period_end
-                    ? new Date(entitlements.period_end).toLocaleDateString("vi-VN")
+                    ? `${new Date(entitlements.period_end).toLocaleDateString("vi-VN")}${
+                        remainingDays !== null
+                          ? ` (${vi.plans.daysRemainingPrefix} ${remainingDays} ${vi.plans.daysRemainingSuffix})`
+                          : ""
+                      }`
                     : vi.settings.planLifetime}
                 </CardDescription>
               </div>
 
               <div className="flex items-center gap-2">
-                {!entitlements?.is_premium ? (
-                  <Link
-                    href="/pricing"
-                    className="inline-flex items-center justify-center rounded-xl border border-amber-300 bg-white px-3 py-1.5 text-xs font-bold text-amber-800 hover:bg-amber-50 shadow-xs"
-                  >
-                    Nâng cấp gói
-                  </Link>
-                ) : null}
-
-                {entitlements?.is_premium ? (
-                  <span className="rounded-xl border border-amber-400 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-900">
-                    ★ Premium
-                  </span>
-                ) : (
-                  <span className="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800">
-                    Miễn phí
-                  </span>
-                )}
+                <Link
+                  href="/dashboard/billing"
+                  className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-xs font-extrabold shadow-xs transition-colors ${
+                    entitlements?.is_premium
+                      ? "border border-amber-400 bg-amber-500 text-white hover:bg-amber-600"
+                      : "bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600"
+                  }`}
+                >
+                  {entitlements?.is_premium ? vi.plans.renewButton : vi.plans.upgradeButton}
+                </Link>
               </div>
             </div>
           </CardHeader>
@@ -404,16 +430,20 @@ export function AccountClient({
                   {vi.settings.aiUsageToday}
                 </span>
                 <p className="text-lg font-black text-slate-900">
-                  {quotaStatus.remainingToday}
+                  Còn {quotaStatus.remainingToday}
                   <span className="text-xs font-normal text-slate-500">
                     /{quotaStatus.dailyLimit} lượt
                   </span>
                 </p>
                 <ProgressBar
-                  value={quotaStatus.remainingToday}
+                  value={aiCallsUsed}
                   max={quotaStatus.dailyLimit}
-                  className="h-1.5"
+                  variant={aiRatio >= 1 ? "danger" : aiRatio >= 0.8 ? "amber" : "default"}
+                  size="sm"
                 />
+                <span className="text-[10px] text-slate-500 block">
+                  {vi.plans.usageBar.aiResetNote}
+                </span>
               </div>
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-3.5 space-y-1.5">
@@ -421,10 +451,21 @@ export function AccountClient({
                   {vi.settings.setsUsage}
                 </span>
                 <p className="text-lg font-black text-slate-900">
-                  {usageStats.setCount} bộ
+                  {usageStats.setCount}
+                  <span className="text-xs font-normal text-slate-500">
+                    /{limits.max_sets} bộ
+                  </span>
                 </p>
+                <ProgressBar
+                  value={usageStats.setCount}
+                  max={limits.max_sets}
+                  variant={setRatio >= 1 ? "danger" : setRatio >= 0.8 ? "amber" : "default"}
+                  size="sm"
+                />
                 <span className="text-[10px] text-slate-500 block">
-                  Không giới hạn trong phiên bản hiện tại
+                  {usageStats.setCount > limits.max_sets
+                    ? vi.plans.usageBar.overMaxSetsKeptNotice
+                    : `Tối đa ${limits.max_sets} bộ đang lưu`}
                 </span>
               </div>
 
@@ -433,20 +474,35 @@ export function AccountClient({
                   {vi.settings.storageUsage}
                 </span>
                 <p className="text-lg font-black text-slate-900">
-                  {usageStats.storageMb.toFixed(1)} MB
+                  {usageStats.storageMb.toFixed(1)}
+                  <span className="text-xs font-normal text-slate-500">
+                    /{limits.storage_mb} MB
+                  </span>
                 </p>
+                <ProgressBar
+                  value={usageStats.storageMb}
+                  max={limits.storage_mb}
+                  variant={storageRatio >= 1 ? "danger" : storageRatio >= 0.8 ? "amber" : "default"}
+                  size="sm"
+                />
                 <span className="text-[10px] text-slate-500 block">
-                  Giới hạn 20 MB/tệp tải lên
+                  Tối đa {limits.max_file_mb} MB/tệp • {limits.max_pdf_pages} trang PDF • {limits.max_print_versions} mã đề
                 </span>
               </div>
             </div>
 
-            <div className="pt-1">
+            <div className="pt-1 flex flex-wrap items-center justify-between gap-2">
               <Link
-                href="/dashboard/feedback"
+                href="/pricing"
                 className="text-xs font-bold text-[var(--space-primary)] hover:underline flex items-center gap-1"
               >
-                <span>✨ {vi.settings.upgradePrompt}</span>
+                <span>✨ Xem bảng so sánh gói Free & Premium chi tiết →</span>
+              </Link>
+              <Link
+                href="/dashboard/feedback"
+                className="text-xs font-medium text-slate-500 hover:text-slate-800 hover:underline"
+              >
+                Góp ý của tôi
               </Link>
             </div>
           </CardContent>

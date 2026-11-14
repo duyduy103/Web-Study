@@ -21,12 +21,77 @@ export type FeedbackStatus = "new" | "in_progress" | "resolved" | "ignored";
 export type FeedbackPriority = "low" | "medium" | "high" | "urgent";
 export type PlanCode = "free" | "premium";
 export type SubscriptionStatus = "active" | "canceled" | "expired";
+export type OrderPeriod = "month" | "year";
+export type OrderStatus = "pending" | "paid" | "expired" | "cancelled" | "refunded";
+export type PaymentEventStatus = "processed" | "needs_review" | "ignored";
+export type NotificationType =
+  | "plan_changed"
+  | "payment_confirmed"
+  | "plan_expiring_soon"
+  | "plan_expired"
+  | "feedback_reply"
+  | "system";
+
+export interface PaymentOrder {
+  id: string;
+  user_id: string;
+  plan_code: PlanCode | string;
+  period: OrderPeriod;
+  amount: number;
+  currency: string;
+  status: OrderStatus;
+  provider: string;
+  provider_ref: string | null;
+  payment_code: string;
+  created_at: string;
+  paid_at: string | null;
+  expires_at: string;
+}
+
+export interface PaymentEventItem {
+  id: string;
+  provider: string;
+  event_id: string;
+  status: PaymentEventStatus;
+  reason: string | null;
+  order_id: string | null;
+  order_payment_code?: string | null;
+  payload: Json;
+  created_at: string;
+}
 
 export interface PlanLimits {
-  max_questions_per_set: number | null;
-  max_sets_per_day: number | null;
+  max_sets: number;
+  ai_daily: number;
+  max_file_mb: number;
+  max_pdf_pages: number;
+  storage_mb: number;
+  max_print_versions: number;
+  can_export_docx: boolean;
+  // Các khóa tương thích ngược từ Bước 12B
   ai_daily_limit: number;
   max_export_versions: number;
+  max_questions_per_set: number | null;
+  max_sets_per_day: number | null;
+}
+
+export interface PlanPrices {
+  month?: number;
+  year?: number;
+}
+
+export interface PlanPeriodDays {
+  month?: number;
+  year?: number;
+}
+
+export interface PlanCatalogItem {
+  code: PlanCode;
+  name: string;
+  limits: PlanLimits;
+  prices: PlanPrices;
+  period_days: PlanPeriodDays;
+  active: boolean;
 }
 
 export interface UserEntitlements {
@@ -37,7 +102,21 @@ export interface UserEntitlements {
   period_end: string | null;
   source: string;
   limits: PlanLimits;
+  prices?: PlanPrices;
+  period_days?: PlanPeriodDays;
   custom_ai_daily_limit: number | null;
+}
+
+export interface NotificationItem {
+  id: string;
+  user_id: string;
+  type: NotificationType | string;
+  title: string;
+  body: string;
+  metadata: Json;
+  dedupe_key: string | null;
+  read_at: string | null;
+  created_at: string;
 }
 
 export type Database = {
@@ -947,6 +1026,8 @@ export type Database = {
           code: string;
           name: string;
           limits: Json;
+          prices: Json;
+          period_days: Json;
           active: boolean;
           created_at: string;
         };
@@ -954,6 +1035,8 @@ export type Database = {
           code: string;
           name: string;
           limits?: Json;
+          prices?: Json;
+          period_days?: Json;
           active?: boolean;
           created_at?: string;
         };
@@ -961,6 +1044,8 @@ export type Database = {
           code?: string;
           name?: string;
           limits?: Json;
+          prices?: Json;
+          period_days?: Json;
           active?: boolean;
           created_at?: string;
         };
@@ -995,6 +1080,123 @@ export type Database = {
           period_end?: string | null;
           source?: string;
           granted_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: string;
+          title: string;
+          body: string;
+          metadata: Json;
+          dedupe_key: string | null;
+          read_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          type: string;
+          title: string;
+          body: string;
+          metadata?: Json;
+          dedupe_key?: string | null;
+          read_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          type?: string;
+          title?: string;
+          body?: string;
+          metadata?: Json;
+          dedupe_key?: string | null;
+          read_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      orders: {
+        Row: {
+          id: string;
+          user_id: string;
+          plan_code: string;
+          period: OrderPeriod;
+          amount: number;
+          currency: string;
+          status: OrderStatus;
+          provider: string;
+          provider_ref: string | null;
+          payment_code: string;
+          created_at: string;
+          paid_at: string | null;
+          expires_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          plan_code: string;
+          period: OrderPeriod;
+          amount: number;
+          currency?: string;
+          status?: OrderStatus;
+          provider?: string;
+          provider_ref?: string | null;
+          payment_code: string;
+          created_at?: string;
+          paid_at?: string | null;
+          expires_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          plan_code?: string;
+          period?: OrderPeriod;
+          amount?: number;
+          currency?: string;
+          status?: OrderStatus;
+          provider?: string;
+          provider_ref?: string | null;
+          payment_code?: string;
+          created_at?: string;
+          paid_at?: string | null;
+          expires_at?: string;
+        };
+        Relationships: [];
+      };
+      payment_events: {
+        Row: {
+          id: string;
+          provider: string;
+          event_id: string;
+          status: PaymentEventStatus;
+          reason: string | null;
+          order_id: string | null;
+          payload: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          provider?: string;
+          event_id: string;
+          status: PaymentEventStatus;
+          reason?: string | null;
+          order_id?: string | null;
+          payload?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          provider?: string;
+          event_id?: string;
+          status?: PaymentEventStatus;
+          reason?: string | null;
+          order_id?: string | null;
+          payload?: Json;
           created_at?: string;
         };
         Relationships: [];
@@ -1258,6 +1460,86 @@ export type Database = {
           p_action: string;
           p_reason: string;
           p_custom_limit?: number | null;
+        };
+        Returns: Json;
+      };
+      create_user_notification: {
+        Args: {
+          p_user_id: string;
+          p_type: string;
+          p_title: string;
+          p_body: string;
+          p_metadata?: Json;
+          p_dedupe_key?: string | null;
+        };
+        Returns: string | null;
+      };
+      activate_subscription_from_order: {
+        Args: {
+          p_order_id: string;
+          p_provider_ref?: string | null;
+          p_actor_admin_id?: string | null;
+          p_reason?: string | null;
+        };
+        Returns: Json;
+      };
+      create_or_reuse_payment_order: {
+        Args: {
+          p_plan_code: string;
+          p_period: string;
+          p_payment_code: string;
+        };
+        Returns: Json;
+      };
+      get_my_order_status: {
+        Args: {
+          p_order_id: string;
+        };
+        Returns: Json;
+      };
+      cancel_my_pending_order: {
+        Args: {
+          p_order_id: string;
+        };
+        Returns: Json;
+      };
+      process_sepay_webhook_event: {
+        Args: {
+          p_event_id: string;
+          p_transfer_type: string;
+          p_transfer_amount: number;
+          p_payment_code?: string | null;
+          p_reference_code?: string | null;
+          p_payload?: Json;
+        };
+        Returns: Json;
+      };
+      get_admin_orders_and_events: {
+        Args: {
+          p_status?: string | null;
+          p_search?: string | null;
+          p_limit?: number;
+          p_offset?: number;
+        };
+        Returns: Json;
+      };
+      admin_manage_payment_order: {
+        Args: {
+          p_action: string;
+          p_order_id?: string | null;
+          p_event_id?: string | null;
+          p_reason?: string | null;
+          p_revoke_premium?: boolean;
+        };
+        Returns: Json;
+      };
+      admin_update_plan_config: {
+        Args: {
+          p_plan_code: string;
+          p_prices: Json;
+          p_limits: Json;
+          p_period_days?: Json | null;
+          p_reason?: string | null;
         };
         Returns: Json;
       };

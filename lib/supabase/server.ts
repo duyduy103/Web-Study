@@ -34,3 +34,8 @@ export async function createClient(): Promise<SupabaseClient<Database>> {
     }
   );
 }
+
+export const createServerSupabaseClient = createClient;
+export const createSupabaseServerClient = createClient;
+
+

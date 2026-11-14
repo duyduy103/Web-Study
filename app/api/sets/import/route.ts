@@ -8,6 +8,7 @@ import {
   importQuestionSetToDatabase,
   validateAndReadSource,
 } from "@/lib/sets/import-service";
+import { countPdfPages } from "@/lib/parsing/extract-text";
 import {
   importMetadataSchema,
   parsedQuestionInputSchema,
@@ -86,11 +87,17 @@ export async function POST(request: Request) {
     }
 
     const source = await validateAndReadSource(file, pastedText);
+    const pdfPageCount =
+      source.mimeType === "application/pdf"
+        ? countPdfPages(source.buffer)
+        : null;
+
     await enforceAccountImportLimits({
       supabase,
       userId: user.id,
       role,
       newFileSizeBytes: source.buffer.byteLength,
+      pdfPageCount,
       questionCount: preParsedQuestions?.length,
     });
 

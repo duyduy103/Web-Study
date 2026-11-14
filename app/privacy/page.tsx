@@ -44,14 +44,18 @@ export default function PrivacyPage() {
           </p>
 
           <h2 className="text-base font-bold text-slate-900">
-            4. Dữ liệu gói dịch vụ & Thông tin thanh toán
+            4. Dữ liệu gói dịch vụ & Xử lý giao dịch VietQR / SePay (Bản thảo mẫu — Cần kế toán/luật sư rà soát)
           </h2>
           <p>
-            MemoQuiz chỉ lưu trữ trạng thái gói dịch vụ (Free/Premium), thời điểm
-            bắt đầu và ngày hết hạn. Chúng tôi không lưu trữ bất kỳ thông tin
-            thẻ thanh toán, số tài khoản ngân hàng hay mật mã bảo mật tài chính
-            nào của người dùng. Mọi thao tác nâng cấp hoặc đối soát thanh toán
-            đều được xử lý bảo mật và minh bạch.
+            MemoQuiz lưu trữ thông tin đơn hàng (mã đơn `payment_code`, gói, chu
+            kỳ, số tiền VND, trạng thái và thời điểm thanh toán) cùng các trường
+            đối soát cần thiết từ bản tin webhook SePay (mã sự kiện `event_id`,
+            số tiền chuyển khoản, nội dung chuyển khoản và mã tham chiếu ngân
+            hàng) nhằm tự động kích hoạt gói Premium và phục vụ tra cứu/kiểm toán
+            khi có khiếu nại. Các trường dữ liệu thừa không cần thiết từ cổng
+            thanh toán đều được lược bỏ trước khi lưu. Chúng tôi không bao giờ
+            thu thập hay lưu trữ mật khẩu ngân hàng, mã PIN hay thông tin thẻ tín
+            dụng của người dùng.
           </p>
         </section>
 

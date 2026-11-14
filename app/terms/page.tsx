@@ -52,26 +52,36 @@ export default function TermsPage() {
           </p>
 
           <h2 className="text-base font-bold text-slate-900">
-            5. Gói dịch vụ trả phí (Premium)
+            5. Gói dịch vụ trả phí (Premium) & Hạn mức theo gói
           </h2>
           <p>
-            Tài khoản đăng ký hoặc được cấp gói Cao cấp (Premium) được hưởng
-            các hạn mức nâng cao: không giới hạn số câu hỏi mỗi bộ, không giới
-            hạn số bộ tạo mới mỗi ngày, hạn mức 300 lượt AI mỗi ngày và tính
-            năng xuất 4 mã đề trộn theo seed ra tệp Word (.docx) và PDF A4. Gói
-            có hiệu lực trong thời hạn đã đăng ký hoặc thỏa thuận bằng văn bản.
+            Tài khoản đăng ký hoặc được cấp gói Cao cấp (Premium) theo chu kỳ
+            Tháng hoặc Năm được hưởng các hạn mức nâng cao đọc trực tiếp từ cấu
+            hình hệ thống (lưu tối đa 100 bộ câu hỏi, 50 lượt AI mỗi ngày tính
+            theo múi giờ Việt Nam, tệp tải lên tối đa 20 MB / 60 trang PDF, 500 MB
+            lưu trữ và xuất tối đa 8 mã đề ra tệp Word .docx & PDF A4). Khi gói
+            Premium hết hạn và tài khoản quay về gói Miễn phí, toàn bộ bộ câu hỏi
+            và lịch sử học tập đã tạo vẫn được giữ nguyên an toàn; hệ thống chỉ
+            tạm chặn tạo thêm bộ mới nếu tổng số bộ đang vượt giới hạn gói Miễn
+            phí.
           </p>
 
           <h2 className="text-base font-bold text-slate-900">
-            6. Chính sách thanh toán, nâng cấp & Hoàn tiền
+            6. Thanh toán tự động qua VietQR (SePay) & Chính sách hoàn tiền (Bản thảo mẫu — Cần kế toán/luật sư rà soát)
           </h2>
           <p>
-            Khi đăng ký gói Premium, các quyền lợi được kích hoạt ngay sau khi
-            xác nhận thanh toán hoặc được ban quản trị phê duyệt. Chúng tôi cam
-            kết hoàn tiền 100% trong vòng 7 ngày đầu tiên nếu hệ thống phát
-            sinh sự cố kỹ thuật nghiêm trọng kéo dài mà không thể khắc phục.
-            Sau 7 ngày hoặc khi người dùng đã sử dụng vượt quá 50% hạn mức AI
-            của chu kỳ, dịch vụ không áp dụng chính sách hoàn trả chi phí.
+            MemoQuiz hỗ trợ thanh toán chuyển khoản ngân hàng qua mã VietQR và
+            xác nhận tự động bằng cổng webhook SePay. Mỗi đơn hàng có một mã nội
+            dung chuyển khoản duy nhất và có hiệu lực chờ thanh toán trong 48 giờ.
+            Khi người dùng chuyển khoản đúng số tiền và nội dung, gói Premium
+            được kích hoạt tự động trong vòng 1–2 phút (nếu tài khoản đang còn
+            hạn Premium, số ngày mới sẽ được cộng nối tiếp vào ngày hết hạn hiện
+            tại). Trường hợp chuyển sai số tiền hoặc ghi thiếu mã đơn, giao dịch
+            được lưu vào danh sách đối soát để Quản trị viên hỗ trợ xử lý thủ
+            công. Chính sách hoàn tiền mẫu: hỗ trợ hoàn tiền trong vòng 7 ngày
+            đầu tiên nếu phát sinh lỗi kỹ thuật từ phía hệ thống hoặc chuyển
+            khoản thừa/trùng đơn hàng (cần kế toán/đơn vị vận hành rà soát quy
+            trình chứng từ hoàn tiền trước khi vận hành thương mại chính thức).
           </p>
         </section>
 

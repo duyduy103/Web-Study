@@ -15,6 +15,7 @@ import {
   recordUserAiTokens,
   saveAiCache,
 } from "@/lib/ai/quota-and-cache";
+import { AiClassifiedError, classifyAiError } from "@/lib/ai/errors";
 import { vi } from "@/lib/i18n/vi";
 
 export interface InlineMediaPart {
@@ -173,7 +174,7 @@ export async function callGeminiStructured<TOutput>(
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const generator = options.customGenerator ?? defaultGeminiGenerator;
 
-  let lastError: Error | null = null;
+  let lastClassified: AiClassifiedError | null = null;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -186,11 +187,29 @@ export async function callGeminiStructured<TOutput>(
       });
 
       const cleanedText = stripMarkdownJsonFences(rawResp.text);
-      const jsonParsed: unknown = JSON.parse(cleanedText);
+      let jsonParsed: unknown;
+      try {
+        jsonParsed = JSON.parse(cleanedText);
+      } catch {
+        throw new AiClassifiedError({
+          code: "schema_rejected",
+          message: vi.ai.invalidSchemaError,
+          httpStatus: 422,
+          originalCode: "INVALID_JSON_OUTPUT",
+          retryable: true,
+        });
+      }
+
       const validated = options.zodSchema.safeParse(jsonParsed);
 
       if (!validated.success) {
-        throw new Error(vi.ai.invalidSchemaError);
+        throw new AiClassifiedError({
+          code: "schema_rejected",
+          message: vi.ai.invalidSchemaError,
+          httpStatus: 422,
+          originalCode: "SCHEMA_VALIDATION_FAILED",
+          retryable: true,
+        });
       }
 
       const tokens = rawResp.totalTokens ?? 0;
@@ -213,17 +232,26 @@ export async function callGeminiStructured<TOutput>(
         remainingQuota: quotaResult.remaining,
       };
     } catch (err) {
-      lastError =
-        err instanceof Error ? err : new Error(vi.ai.callFailed);
+      lastClassified =
+        err instanceof AiClassifiedError
+          ? err
+          : new AiClassifiedError(classifyAiError(err));
+
+      if (!lastClassified.retryable) {
+        break;
+      }
     }
   }
 
-  if (
-    lastError?.message === vi.ai.timeoutError ||
-    lastError?.message === vi.ai.invalidSchemaError
-  ) {
-    throw lastError;
+  if (lastClassified) {
+    throw lastClassified;
   }
 
-  throw new Error(vi.ai.callFailed);
+  throw new AiClassifiedError({
+    code: "unknown",
+    message: vi.ai.callFailed,
+    httpStatus: 500,
+    originalCode: "UNKNOWN_ERROR",
+    retryable: false,
+  });
 }

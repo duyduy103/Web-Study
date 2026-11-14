@@ -9,6 +9,7 @@ import {
   forgotPasswordSchema,
   resetPasswordSchema,
 } from "@/lib/auth/schemas";
+import { isPasswordContainingEmail } from "@/lib/auth/password-rules";
 import { vi } from "@/lib/i18n/vi";
 
 export interface AuthActionState {
@@ -354,6 +355,26 @@ export async function resetPasswordAction(
   }
 
   const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return {
+      error: vi.auth.resetPassword.errorGeneric,
+    };
+  }
+
+  if (isPasswordContainingEmail(parsed.data.password, user.email ?? "")) {
+    return {
+      fieldErrors: {
+        password: vi.auth.validation.passwordContainsEmail,
+        confirmPassword: "",
+      },
+    };
+  }
+
   const { error } = await supabase.auth.updateUser({
     password: parsed.data.password,
   });

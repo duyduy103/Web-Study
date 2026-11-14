@@ -21,6 +21,7 @@ interface BatchTaskItem {
   resultQuestions?: ParsedQuestion[];
   cacheHit?: boolean;
   errorMessage?: string;
+  errorCode?: string;
 }
 
 interface AiAssistPanelProps {
@@ -246,8 +247,12 @@ export function AiAssistPanel({
 
         const data: unknown = await res.json();
         if (!res.ok) {
-          const errObj = data as { error?: string };
-          throw new Error(errObj.error ?? vi.ai.callFailed);
+          const errObj = data as { error?: string; code?: string };
+          const customErr = new Error(errObj.error ?? vi.ai.callFailed) as Error & {
+            code?: string;
+          };
+          customErr.code = errObj.code;
+          throw customErr;
         }
 
         const payload = data as {
@@ -277,12 +282,24 @@ export function AiAssistPanel({
           setBatches([...updatedList]);
           break;
         }
+        const errWithCode = err as { message?: string; code?: string };
         updatedList[i] = {
           ...updatedList[i],
           status: "error",
-          errorMessage: err instanceof Error ? err.message : vi.ai.callFailed,
+          errorMessage:
+            err instanceof Error ? err.message : vi.ai.callFailed,
+          errorCode: errWithCode?.code,
         };
         setBatches([...updatedList]);
+
+        if (
+          errWithCode?.code === "invalid_key" ||
+          errWithCode?.code === "quota" ||
+          errWithCode?.code === "app_limit" ||
+          errWithCode?.code === "payload_too_large"
+        ) {
+          break;
+        }
       }
     }
 
@@ -375,8 +392,12 @@ export function AiAssistPanel({
 
         const data: unknown = await res.json();
         if (!res.ok) {
-          const errObj = data as { error?: string };
-          throw new Error(errObj.error ?? vi.ai.callFailed);
+          const errObj = data as { error?: string; code?: string };
+          const customErr = new Error(errObj.error ?? vi.ai.callFailed) as Error & {
+            code?: string;
+          };
+          customErr.code = errObj.code;
+          throw customErr;
         }
 
         const payload = data as {
@@ -597,6 +618,7 @@ export function AiAssistPanel({
                 ) : b.status === "error" ? (
                   <span className="font-semibold text-red-600">
                     {vi.ai.suggestion.batchFailedPrefix} {b.errorMessage}
+                    {b.errorCode ? ` (${b.errorCode})` : ""}
                   </span>
                 ) : null}
               </div>

@@ -8,6 +8,7 @@ import {
   buildSourcePreview,
   validateAndReadSource,
 } from "@/lib/sets/import-service";
+import { countPdfPages } from "@/lib/parsing/extract-text";
 import {
   documentFormatSchema,
   spreadsheetMappingSchema,
@@ -65,11 +66,17 @@ export async function POST(request: Request) {
       getUserAiQuotaStatus(supabase, user.id, role),
     ]);
 
+    const pdfPageCount =
+      source.mimeType === "application/pdf"
+        ? countPdfPages(source.buffer)
+        : null;
+
     await enforceAccountImportLimits({
       supabase,
       userId: user.id,
       role,
       newFileSizeBytes: source.buffer.byteLength,
+      pdfPageCount,
     });
 
     const preview = await buildSourcePreview(source, {

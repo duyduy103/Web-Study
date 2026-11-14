@@ -122,6 +122,34 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    // Nếu có phản hồi công khai mới từ admin cho người dùng đã đăng nhập -> tạo thông báo trong ứng dụng
+    if (
+      updated.user_id &&
+      public_response &&
+      public_response.trim().length > 0 &&
+      public_response !== beforeItem?.public_response
+    ) {
+      try {
+        const snippet =
+          public_response.trim().length > 120
+            ? `${public_response.trim().slice(0, 120)}...`
+            : public_response.trim();
+        await supabase.rpc("create_user_notification", {
+          p_user_id: updated.user_id,
+          p_type: "feedback_reply",
+          p_title: "Ban quản trị đã phản hồi góp ý của bạn",
+          p_body: snippet,
+          p_metadata: {
+            feedback_id: id,
+            href: "/dashboard/feedback",
+          },
+          p_dedupe_key: `feedback_reply_${id}_${updated.public_response_at ?? Date.now()}`,
+        });
+      } catch {
+        // Không chặn luồng chính nếu bảng notifications chưa chạy migration
+      }
+    }
+
     // Ghi audit log
     await logAdminAudit(supabase, user.id, {
       action: "feedback_update",

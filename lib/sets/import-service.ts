@@ -9,6 +9,11 @@ import {
   type ParsedQuestion,
   type SpreadsheetColumnMapping,
 } from "@/lib/parsing";
+import {
+  isJpegBuffer,
+  isPdfBuffer,
+  isPngBuffer,
+} from "@/lib/parsing/extract-text";
 import { ALLOWED_EXTENSIONS, MAX_FILE_SIZE_BYTES } from "@/lib/sets/schemas";
 import {
   AI_QUESTION_BATCH_SIZE,
@@ -89,7 +94,7 @@ export async function validateAndReadSource(
     return {
       buffer,
       fileName: file.name,
-      mimeType: file.type || inferMimeType(lowerName),
+      mimeType: resolveSourceMimeType(lowerName, buffer, file.type),
     };
   }
 
@@ -110,24 +115,39 @@ export async function validateAndReadSource(
   throw new Error(vi.importSet.validation.sourceRequired);
 }
 
-function inferMimeType(lowerName: string): string {
-  if (lowerName.endsWith(".docx")) {
-    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-  }
-  if (lowerName.endsWith(".pdf")) {
+function resolveSourceMimeType(
+  lowerName: string,
+  buffer: Buffer,
+  rawType?: string
+): string {
+  if (lowerName.endsWith(".pdf") || isPdfBuffer(buffer)) {
     return "application/pdf";
   }
-  if (lowerName.endsWith(".png")) {
+  if (lowerName.endsWith(".png") || isPngBuffer(buffer)) {
     return "image/png";
   }
-  if (lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg")) {
+  if (
+    lowerName.endsWith(".jpg") ||
+    lowerName.endsWith(".jpeg") ||
+    isJpegBuffer(buffer)
+  ) {
     return "image/jpeg";
+  }
+  if (lowerName.endsWith(".docx")) {
+    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
   }
   if (lowerName.endsWith(".xlsx")) {
     return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
   }
   if (lowerName.endsWith(".csv")) {
     return "text/csv";
+  }
+  if (
+    rawType &&
+    rawType !== "application/octet-stream" &&
+    rawType.trim().length > 0
+  ) {
+    return rawType.trim().toLowerCase();
   }
   return "text/plain";
 }

@@ -41,7 +41,19 @@ export async function middleware(request: NextRequest) {
 
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
+  const verifiedUser = authError ? null : user;
+
+  const redirectWithCookies = (targetPathname: string) => {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = targetPathname;
+    const redirectResponse = NextResponse.redirect(redirectUrl);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie);
+    });
+    return redirectResponse;
+  };
 
   const pathname = request.nextUrl.pathname;
   const isDashboardRoute =
@@ -55,39 +67,31 @@ export async function middleware(request: NextRequest) {
     pathname === "/study" ||
     pathname.startsWith("/study/");
 
-  if (!user && isDashboardRoute) {
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/login";
-    return NextResponse.redirect(loginUrl);
+  if (!verifiedUser && isDashboardRoute) {
+    return redirectWithCookies("/login");
   }
 
-  if (user && isAuthRoute) {
-    const dashboardUrl = request.nextUrl.clone();
-    dashboardUrl.pathname = "/dashboard";
-    return NextResponse.redirect(dashboardUrl);
+  if (verifiedUser && isAuthRoute) {
+    return redirectWithCookies("/dashboard");
   }
 
   // Kiểm tra tài khoản bị khóa và cập nhật last_seen_at
-  if (user && (isProtectedAppRoute || isBlockedRoute)) {
+  if (verifiedUser && (isProtectedAppRoute || isBlockedRoute)) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("is_blocked")
-      .eq("id", user.id)
+      .eq("id", verifiedUser.id)
       .single();
 
     const isBlocked = Boolean((profile as { is_blocked?: boolean } | null)?.is_blocked);
 
     if (isBlocked) {
       if (!isBlockedRoute) {
-        const blockedUrl = request.nextUrl.clone();
-        blockedUrl.pathname = "/blocked";
-        return NextResponse.redirect(blockedUrl);
+        return redirectWithCookies("/blocked");
       }
     } else {
       if (isBlockedRoute) {
-        const dashboardUrl = request.nextUrl.clone();
-        dashboardUrl.pathname = "/dashboard";
-        return NextResponse.redirect(dashboardUrl);
+        return redirectWithCookies("/dashboard");
       }
       // Người dùng hợp lệ: cập nhật last_seen_at (tối đa 1 lần/giờ)
       try {

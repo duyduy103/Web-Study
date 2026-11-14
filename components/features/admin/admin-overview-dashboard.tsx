@@ -30,6 +30,13 @@ export interface SystemOverviewData {
   storage: {
     estimated_bytes: number;
   };
+  billing?: {
+    monthly_revenue_vnd: number;
+    pending_orders: number;
+    active_premium_users: number;
+    expiring_soon_users: number;
+    needs_review_events?: number;
+  };
   charts: {
     signups_30d: Array<{ date: string; label: string; count: number }>;
     reviews_30d: Array<{ date: string; label: string; count: number }>;
@@ -186,6 +193,62 @@ export function AdminOverviewDashboard({
             <p className="mt-1 text-2xl font-black text-white">{storageMb} MB</p>
             <span className="mt-2 block text-[10px] text-slate-500">
               File đề cương & tài liệu
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Nhóm 2.5: Doanh thu, Đơn hàng SePay & Gói Premium */}
+      <div className="space-y-3">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-amber-400">
+          3. Doanh Thu Tháng, Đơn Thanh Toán & Gói Premium
+        </h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 shadow-sm">
+            <span className="text-[11px] font-medium text-slate-400">
+              {vi.admin.metrics.monthlyRevenue}
+            </span>
+            <p className="mt-1 text-2xl font-black text-emerald-400">
+              {(data.billing?.monthly_revenue_vnd ?? 0).toLocaleString("vi-VN")}đ
+            </p>
+            <span className="mt-2 block text-[10px] text-slate-500">
+              Tổng đơn paid trong tháng
+            </span>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 shadow-sm">
+            <span className="text-[11px] font-medium text-slate-400">
+              {vi.admin.metrics.pendingOrders}
+            </span>
+            <p className="mt-1 text-2xl font-black text-amber-400">
+              {data.billing?.pending_orders ?? 0}
+            </p>
+            <span className="mt-2 block text-[10px] text-slate-500">
+              Cần xem xét: {data.billing?.needs_review_events ?? 0} giao dịch
+            </span>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 shadow-sm">
+            <span className="text-[11px] font-medium text-slate-400">
+              {vi.admin.metrics.activePremiumUsers}
+            </span>
+            <p className="mt-1 text-2xl font-black text-teal-400">
+              {data.billing?.active_premium_users ?? 0}
+            </p>
+            <span className="mt-2 block text-[10px] text-slate-500">
+              Tài khoản đang hiệu lực PRO
+            </span>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 shadow-sm">
+            <span className="text-[11px] font-medium text-slate-400">
+              {vi.admin.metrics.expiringSoonUsers}
+            </span>
+            <p className="mt-1 text-2xl font-black text-rose-400">
+              {data.billing?.expiring_soon_users ?? 0}
+            </p>
+            <span className="mt-2 block text-[10px] text-slate-500">
+              Sẽ hết hạn trong 7 ngày tới
             </span>
           </div>
         </div>

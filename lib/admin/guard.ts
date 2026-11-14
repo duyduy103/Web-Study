@@ -30,9 +30,10 @@ export async function requireAdmin(): Promise<AdminUserContext> {
   const supabase = await createClient();
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (authError || !user) {
     notFound();
   }
 
