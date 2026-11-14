@@ -529,3 +529,4 @@ end;
 $$;
 
 grant execute on function public.get_admin_users_list(text, text, text, integer, integer) to authenticated;
+
