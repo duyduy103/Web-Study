@@ -167,6 +167,11 @@ export async function consumeUserAiQuotaOrThrow(
   }
 
   if (error) {
+    console.error("[AI Quota] Postgres RPC error:", {
+      code: error.code ?? "UNKNOWN",
+      message: error.message,
+      details: error.details ?? null,
+    });
     throw new Error(vi.limits.systemErrorFailClosed);
   }
 

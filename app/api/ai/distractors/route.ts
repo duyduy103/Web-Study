@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { vi } from "@/lib/i18n/vi";
+import { classifyAiError } from "@/lib/ai/errors";
 import { generateDistractorsBatchWithAi } from "@/lib/ai/tasks";
 
 const generateRequestSchema = z.object({
@@ -22,9 +23,21 @@ const undoRequestSchema = z.object({
   snapshots: z.array(undoSnapshotSchema).min(1),
 });
 
+const previewItemSchema = z.object({
+  questionId: z.string().min(1),
+  stem: z.string().min(1),
+  correctAnswer: z.string().min(1),
+});
+
+const previewGenerateRequestSchema = z.object({
+  action: z.literal("preview_generate"),
+  items: z.array(previewItemSchema).min(1).max(30),
+});
+
 const requestBodySchema = z.discriminatedUnion("action", [
   generateRequestSchema,
   undoRequestSchema,
+  previewGenerateRequestSchema,
 ]);
 
 export async function POST(request: Request) {
@@ -36,7 +49,7 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json(
-        { error: vi.importSet.errors.unauthorized },
+        { error: vi.importSet.errors.unauthorized, code: "invalid_request" },
         { status: 401 }
       );
     }
@@ -44,15 +57,38 @@ export async function POST(request: Request) {
     const rawBody: unknown = await request.json();
     const parsedBody = requestBodySchema.safeParse(rawBody);
     if (!parsedBody.success) {
+      console.error(
+        "[AI distractors] code=invalid_request original=BODY_VALIDATION_FAILED status=400"
+      );
       return NextResponse.json(
-        { error: vi.ai.callFailed },
+        { error: vi.ai.errors.invalidRequest, code: "invalid_request" },
         { status: 400 }
       );
     }
 
     const payload = parsedBody.data;
 
-    // Kiểm tra quyền sở hữu bộ câu hỏi trên server
+    // Xử lý action === "preview_generate" (trong màn hình nạp file / xem trước khi chưa tạo bộ câu hỏi)
+    if (payload.action === "preview_generate") {
+      const aiBatch = await generateDistractorsBatchWithAi({
+        supabase,
+        userId: user.id,
+        items: payload.items.map((i) => ({
+          questionId: i.questionId,
+          stem: i.stem,
+          correctAnswer: i.correctAnswer,
+        })),
+      });
+
+      return NextResponse.json({
+        results: aiBatch.results,
+        failed: aiBatch.failed,
+        cacheHit: aiBatch.cacheHit,
+        remainingQuota: aiBatch.remainingQuota,
+      });
+    }
+
+    // Kiểm tra quyền sở hữu bộ câu hỏi trên server (cho action = "generate" hoặc "undo")
     const { data: ownedSet } = await supabase
       .from("question_sets")
       .select("id")
@@ -62,7 +98,7 @@ export async function POST(request: Request) {
 
     if (!ownedSet) {
       return NextResponse.json(
-        { error: vi.setDetails.notFoundDescription },
+        { error: vi.setDetails.notFoundDescription, code: "invalid_request" },
         { status: 403 }
       );
     }
@@ -168,11 +204,17 @@ export async function POST(request: Request) {
       })),
     });
 
-    const undoSnapshots = validItems.map((i) => ({
-      questionId: i.questionId,
-      previousExplanation: i.previousExplanation,
-      answerText: i.correctAnswer,
-    }));
+    const updatedQuestionIds = new Set(
+      aiBatch.results.map((r) => r.questionId)
+    );
+
+    const undoSnapshots = validItems
+      .filter((i) => updatedQuestionIds.has(i.questionId))
+      .map((i) => ({
+        questionId: i.questionId,
+        previousExplanation: i.previousExplanation,
+        answerText: i.correctAnswer,
+      }));
 
     for (const out of aiBatch.results) {
       await supabase
@@ -214,14 +256,20 @@ export async function POST(request: Request) {
     return NextResponse.json({
       updatedCount: aiBatch.results.length,
       skipped,
+      failed: aiBatch.failed,
       undoSnapshots,
       cacheHit: aiBatch.cacheHit,
       remainingQuota: aiBatch.remainingQuota,
     });
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : vi.ai.callFailed;
-    return NextResponse.json({ error: message }, { status: 400 });
+    const classified = classifyAiError(err);
+    console.error(
+      `[AI distractors] code=${classified.code} original=${classified.originalCode} status=${classified.httpStatus}`
+    );
+    return NextResponse.json(
+      { error: classified.message, code: classified.code },
+      { status: classified.httpStatus }
+    );
   }
 }
 

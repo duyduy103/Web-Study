@@ -1,16 +1,12 @@
 import "server-only";
 import { GoogleGenAI } from "@google/genai";
-import { getAiDailyLimitForRole, getAiGlobalDailyLimit } from "@/lib/ai/limits";
+import { getAiGlobalDailyLimit } from "@/lib/ai/limits";
 import { AiClassifiedError } from "@/lib/ai/errors";
 import { vi } from "@/lib/i18n/vi";
 
 export type AiModelTier = "fast" | "strong";
 
-export function getAiDailyLimit(): number {
-  return getAiDailyLimitForRole("teacher");
-}
-
-export { getAiDailyLimitForRole, getAiGlobalDailyLimit };
+export { getAiGlobalDailyLimit };
 
 export function getAiModelName(tier: AiModelTier): string {
   const modelName =

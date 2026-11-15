@@ -167,7 +167,7 @@ export async function buildSourcePreview(
     mimeType: source.mimeType,
   });
 
-  const remainingAiQuota = options?.remainingAiQuota ?? 30;
+  const remainingAiQuota = options?.remainingAiQuota ?? 10;
 
   if (extracted.isMultimodal) {
     const pageCount = extracted.pageCount ?? 1;

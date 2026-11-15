@@ -667,5 +667,223 @@ describe("MemoQuiz AI Infrastructure & Tasks (Mocked Unit Tests)", () => {
       classifyAiError(new Error("Socket hang up")).code
     ).toBe("unknown");
   });
+
+  it("9. Tác vụ distractors: xử lý độc lập từng câu khi một phần câu hỏng (2 câu thành công, 1 câu lỗi trùng đáp án, 1 câu thiếu đáp án nhiễu)", async () => {
+    const { supabase } = createMockSupabase();
+
+    const items = [
+      {
+        questionId: "q-1",
+        stem: "Cấu trúc dữ liệu nào hoạt động theo nguyên tắc LIFO?",
+        correctAnswer: "Ngăn xếp (Stack)",
+      },
+      {
+        questionId: "q-2",
+        stem: "Giao thức nào dùng để cấp phát IP động?",
+        correctAnswer: "DHCP",
+      },
+      {
+        questionId: "q-3",
+        stem: "Trong SQL, từ khóa nào loại bỏ dòng trùng lặp?",
+        correctAnswer: "DISTINCT",
+      },
+      {
+        questionId: "q-4",
+        stem: "Đơn vị đo cơ bản nhất của thông tin là gì?",
+        correctAnswer: "Bit",
+      },
+    ];
+
+    const genRes = await generateDistractorsBatchWithAi({
+      supabase,
+      userId: "teacher-distractor-partial",
+      items,
+      customGenerator: async () => ({
+        text: JSON.stringify({
+          items: [
+            {
+              questionId: "q-1",
+              distractors: ["Hàng đợi (Queue)", "Cây nhị phân", "Bảng băm"],
+              explanation: "Stack hoạt động theo cơ chế Last In First Out.",
+            },
+            {
+              questionId: "q-2",
+              // Lỗi: phương án nhiễu trùng với đáp án đúng "DHCP"
+              distractors: ["dhcp", "DNS", "FTP"],
+              explanation: "DHCP cấp phát IP động.",
+            },
+            {
+              questionId: "q-3",
+              distractors: ["UNIQUE", "GROUP BY", "ORDER BY"],
+              explanation: "DISTINCT loại bỏ các dòng trùng lặp.",
+            },
+            {
+              questionId: "q-4",
+              // Lỗi: chỉ có 2 phương án nhiễu
+              distractors: ["Byte", "Nibble"],
+              explanation: "Bit là đơn vị nhỏ nhất.",
+            },
+          ],
+        }),
+        totalTokens: 400,
+      }),
+    });
+
+    // 2 câu thành công (q-1 và q-3), 2 câu vào danh sách failed (q-2 và q-4)
+    expect(genRes.results).toHaveLength(2);
+    expect(genRes.failed).toHaveLength(2);
+
+    // Kiểm tra câu thành công: đáp án giáo viên giữ nguyên 100%, aiGenerated = false, 3 nhiễu không trùng
+    const q1 = genRes.results.find((r) => r.questionId === "q-1")!;
+    expect(q1.correctAnswer).toBe("Ngăn xếp (Stack)");
+    expect(q1.choices).toHaveLength(4);
+    const correctChoice1 = q1.choices.find((c) => c.isCorrect)!;
+    expect(correctChoice1.text).toBe("Ngăn xếp (Stack)");
+    expect(correctChoice1.aiGenerated).toBe(false);
+    expect(q1.choices.filter((c) => !c.isCorrect)).toHaveLength(3);
+
+    const q3 = genRes.results.find((r) => r.questionId === "q-3")!;
+    expect(q3.correctAnswer).toBe("DISTINCT");
+    expect(q3.choices).toHaveLength(4);
+
+    // Kiểm tra câu thất bại: báo rõ lý do
+    const failedQ2 = genRes.failed.find((f) => f.questionId === "q-2")!;
+    expect(failedQ2.reason).toContain("trùng với đáp án đúng");
+
+    const failedQ4 = genRes.failed.find((f) => f.questionId === "q-4")!;
+    expect(failedQ4.reason).toContain("không tạo đủ 3 đáp án nhiễu");
+  });
+
+  it("10. Lỗi cấu hình (model_unavailable do model không tồn tại hoặc invalid_key): không thử lại nhiều lần và hoàn lại lượt AI cho người dùng", async () => {
+    let callsInDb = 5;
+    const mockSupabase = {
+      from: (table: string) => {
+        if (table === "ai_cache") {
+          return {
+            select: () => ({
+              eq: () => ({
+                eq: () => ({
+                  maybeSingle: async () => ({ data: null, error: null }),
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === "ai_usage") {
+          return {
+            select: () => ({
+              eq: () => ({
+                eq: () => ({
+                  maybeSingle: async () => ({
+                    data: { calls: callsInDb },
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+            update: (payload: { calls: number }) => ({
+              eq: () => ({
+                eq: async () => {
+                  callsInDb = payload.calls;
+                  return { data: null, error: null };
+                },
+              }),
+            }),
+          };
+        }
+        return {};
+      },
+      rpc: async (fn: string) => {
+        if (fn === "consume_ai_quota_v2" || fn === "consume_ai_quota") {
+          callsInDb += 1;
+          return {
+            data: { allowed: true, calls: callsInDb, tokens: 0, remaining: 25 },
+            error: null,
+          };
+        }
+        return { data: null, error: null };
+      },
+    } as unknown as SupabaseClient<Database>;
+
+    let attempts = 0;
+    await expect(
+      generateDistractorsBatchWithAi({
+        supabase: mockSupabase,
+        userId: "user-config-err",
+        items: [
+          {
+            questionId: "q-err-1",
+            stem: "Câu hỏi test lỗi model không tồn tại",
+            correctAnswer: "Đáp án",
+          },
+        ],
+        customGenerator: async () => {
+          attempts += 1;
+          const err = new Error(
+            "models/gemini-nonexistent is not found for API version v1beta"
+          ) as Error & { status?: number };
+          err.status = 404;
+          throw err;
+        },
+      })
+    ).rejects.toThrow(AiClassifiedError);
+
+    // Lỗi 404 model không tồn tại: không retry (attempts = 1)
+    expect(attempts).toBe(1);
+    // Lượt AI được hoàn lại về giá trị ban đầu (callsInDb = 5)
+    expect(callsInDb).toBe(5);
+  });
+
+  it("11. Route distractors: hỗ trợ action preview_generate khi người dùng nạp file / xem trước 4 câu hỏi-đáp ngắn", async () => {
+    const { supabase } = createMockSupabase();
+
+    const sampleItems = [
+      { questionId: "0", stem: "Thủ đô của Việt Nam là gì?", correctAnswer: "Hà Nội" },
+      { questionId: "1", stem: "Sông nào dài nhất thế giới?", correctAnswer: "Sông Nile" },
+      { questionId: "2", stem: "Đỉnh núi cao nhất thế giới là gì?", correctAnswer: "Everest" },
+      { questionId: "3", stem: "Hành tinh nào gần Mặt Trời nhất?", correctAnswer: "Sao Thủy" },
+    ];
+
+    const aiRes = await generateDistractorsBatchWithAi({
+      supabase,
+      userId: "teacher-preview-distractor",
+      items: sampleItems,
+      customGenerator: async () => ({
+        text: JSON.stringify({
+          items: [
+            {
+              questionId: "0",
+              distractors: ["Đà Nẵng", "TP. Hồ Chí Minh", "Huế"],
+              explanation: "Hà Nội là thủ đô của Việt Nam.",
+            },
+            {
+              questionId: "1",
+              distractors: ["Sông Amazon", "Sông Mê Kông", "Sông Dương Tử"],
+              explanation: "Sông Nile dài nhất thế giới.",
+            },
+            {
+              questionId: "2",
+              distractors: ["K2", "Kangchenjunga", "Lhotse"],
+              explanation: "Everest là đỉnh núi cao nhất.",
+            },
+            {
+              questionId: "3",
+              distractors: ["Sao Kim", "Sao Hỏa", "Sao Mộc"],
+              explanation: "Sao Thủy nằm gần Mặt Trời nhất.",
+            },
+          ],
+        }),
+        totalTokens: 500,
+      }),
+    });
+
+    expect(aiRes.results).toHaveLength(4);
+    expect(aiRes.failed).toHaveLength(0);
+    for (const r of aiRes.results) {
+      expect(r.choices).toHaveLength(4);
+      expect(r.choices.find((c) => c.isCorrect)?.aiGenerated).toBe(false);
+      expect(r.choices.filter((c) => !c.isCorrect)).toHaveLength(3);
+    }
+  });
 });
 

@@ -24,6 +24,7 @@ import {
   type DistractorPromptInputItem,
 } from "@/lib/ai/prompts/generate-distractors";
 import { normalizeInlineWhitespace } from "@/lib/parsing/normalize";
+import { vi } from "@/lib/i18n/vi";
 
 export const LOW_CONFIDENCE_THRESHOLD = 0.8;
 export const AI_QUESTION_BATCH_SIZE = 25;
@@ -164,6 +165,12 @@ export async function fixLowConfidenceQuestionsWithAi(params: {
   };
 }
 
+export interface DistractorFailedItem {
+  questionId: string;
+  stem: string;
+  reason: string;
+}
+
 export interface GeneratedDistractorOutput {
   questionId: string;
   stem: string;
@@ -181,6 +188,7 @@ export interface GeneratedDistractorOutput {
  * - Đáp án đúng của giáo viên được giữ nguyên 100% (aiGenerated = false).
  * - 3 phương án nhiễu do AI sinh có isCorrect = false, aiGenerated = true.
  * - Kiểm tra chặt: phương án nhiễu không được trùng với đáp án đúng của giáo viên.
+ * - Xử lý từng câu độc lập: câu nào hợp lệ thì lưu, câu nào lỗi thì cho vào danh sách failed để thử lại riêng, không làm hỏng cả lô.
  */
 export async function generateDistractorsBatchWithAi(params: {
   supabase: SupabaseClient<Database>;
@@ -189,6 +197,7 @@ export async function generateDistractorsBatchWithAi(params: {
   customGenerator?: RawModelGenerator;
 }): Promise<{
   results: GeneratedDistractorOutput[];
+  failed: DistractorFailedItem[];
   cacheHit: boolean;
   tokensUsed: number;
   remainingQuota?: number;
@@ -198,7 +207,7 @@ export async function generateDistractorsBatchWithAi(params: {
   );
 
   if (validItems.length === 0) {
-    return { results: [], cacheHit: true, tokensUsed: 0 };
+    return { results: [], failed: [], cacheHit: true, tokensUsed: 0 };
   }
 
   const prompt = buildGenerateDistractorsPrompt(validItems);
@@ -219,11 +228,17 @@ export async function generateDistractorsBatchWithAi(params: {
 
   const byId = new Map(aiResult.data.items.map((i) => [i.questionId, i]));
   const outputs: GeneratedDistractorOutput[] = [];
+  const failed: DistractorFailedItem[] = [];
 
   for (const inputItem of validItems) {
     const generated = byId.get(inputItem.questionId);
     if (!generated) {
-      throw new Error("AI trả về thiếu kết quả cho câu hỏi trong lô.");
+      failed.push({
+        questionId: inputItem.questionId,
+        stem: inputItem.stem,
+        reason: vi.ai.distractors.missingResultReason,
+      });
+      continue;
     }
 
     const teacherAnswerClean = normalizeInlineWhitespace(
@@ -231,15 +246,30 @@ export async function generateDistractorsBatchWithAi(params: {
     );
     const teacherLower = teacherAnswerClean.toLowerCase();
 
-    const cleanDistractors = generated.distractors.map((d) =>
-      normalizeInlineWhitespace(d)
-    );
+    const cleanDistractors = (generated.distractors ?? [])
+      .map((d) => normalizeInlineWhitespace(d))
+      .filter((d) => d.length > 0);
 
-    if (cleanDistractors.some((d) => d.toLowerCase() === teacherLower)) {
-      throw new Error(
-        "AI sinh phương án nhiễu trùng với đáp án đúng của giáo viên."
-      );
+    const uniqueDistractors: string[] = [];
+    const seen = new Set<string>();
+    for (const d of cleanDistractors) {
+      const lower = d.toLowerCase();
+      if (lower !== teacherLower && !seen.has(lower)) {
+        seen.add(lower);
+        uniqueDistractors.push(d);
+      }
     }
+
+    if (uniqueDistractors.length < 3) {
+      failed.push({
+        questionId: inputItem.questionId,
+        stem: inputItem.stem,
+        reason: vi.ai.distractors.failedDistractorReason,
+      });
+      continue;
+    }
+
+    const pickedDistractors = uniqueDistractors.slice(0, 3);
 
     outputs.push({
       questionId: inputItem.questionId,
@@ -251,18 +281,40 @@ export async function generateDistractorsBatchWithAi(params: {
           isCorrect: true,
           aiGenerated: false,
         },
-        ...cleanDistractors.map((d) => ({
+        ...pickedDistractors.map((d) => ({
           text: d,
           isCorrect: false,
           aiGenerated: true,
         })),
       ],
-      explanation: normalizeInlineWhitespace(generated.explanation),
+      explanation: normalizeInlineWhitespace(
+        generated.explanation || `Đáp án đúng là ${teacherAnswerClean}.`
+      ),
     });
+  }
+
+  // Nếu tất cả các câu trong lô đều hỏng, ném lỗi để xử lý fail-closed / retry
+  if (outputs.length === 0 && validItems.length > 0) {
+    const duplicateError = failed.find((f) =>
+      f.reason.includes("trùng")
+    );
+    if (duplicateError) {
+      throw new Error(
+        "AI sinh phương án nhiễu trùng với đáp án đúng của giáo viên."
+      );
+    }
+    const missingError = failed.find((f) =>
+      f.reason.includes("không trả về")
+    );
+    if (missingError) {
+      throw new Error("AI trả về thiếu kết quả cho câu hỏi trong lô.");
+    }
+    throw new Error(vi.ai.invalidSchemaError);
   }
 
   return {
     results: outputs,
+    failed,
     cacheHit: aiResult.cacheHit,
     tokensUsed: aiResult.tokensUsed,
     remainingQuota: aiResult.remainingQuota,

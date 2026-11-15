@@ -258,15 +258,24 @@ export interface SubscriptionRecordForActivation {
   id: string;
   user_id: string;
   plan_code: string;
-  status: "active" | "canceled" | "expired";
+  status: "active" | "canceled" | "expired" | "revoked";
   period_end: string | null;
   source: string;
+  revoked_at?: string | null;
+  revoked_reason?: string | null;
 }
 
 export interface InMemoryPaymentState {
   plans: Record<string, Pick<PlanCatalogItem, "code" | "name" | "active" | "prices" | "period_days">>;
   orders: Map<string, OrderRecordForActivation>;
   subscriptions: SubscriptionRecordForActivation[];
+  profiles?: Map<string, { custom_ai_daily_limit: number | null }>;
+  auditLogs?: Array<{
+    action: string;
+    target_id: string;
+    reason: string;
+    metadata: Record<string, unknown>;
+  }>;
   paymentEvents: Map<
     string,
     {
@@ -398,6 +407,110 @@ export function executeActivateSubscriptionFromOrder(
     status: "activated",
     periodEnd: newPeriodEnd,
     daysAdded: days,
+  };
+}
+
+/**
+ * Thực thi logic thu hồi gói Premium tương đương `admin_manage_user(action = 'revoke_premium')`:
+ * - Đặt status = 'revoked', period_end = now, revoked_at = now, revoked_reason cho TẤT CẢ dòng hiệu lực của người dùng
+ * - Tùy chọn xóa custom_ai_daily_limit và đánh dấu đơn paid gần nhất là refunded
+ * - Ghi admin_audit_log (trước/sau) và tạo thông báo cho người dùng ("Gói Premium của bạn đã bị thu hồi" kèm lý do)
+ */
+export function executeAdminRevokePremium(params: {
+  state: InMemoryPaymentState;
+  userId: string;
+  reason: string;
+  clearCustomAiLimit?: boolean;
+  refundLatestOrder?: boolean;
+  now?: Date;
+}): {
+  ok: boolean;
+  revokedCount: number;
+  refundedOrderId: string | null;
+} {
+  const nowIso = (params.now ?? new Date()).toISOString();
+  const nowMs = (params.now ?? new Date()).getTime();
+  const trimmedReason = params.reason.trim();
+
+  const beforeSubs = params.state.subscriptions
+    .filter((s) => s.user_id === params.userId)
+    .map((s) => ({ ...s }));
+
+  let revokedCount = 0;
+  for (const sub of params.state.subscriptions) {
+    if (sub.user_id !== params.userId) continue;
+    const isCurrentlyEffective =
+      sub.status === "active" ||
+      (sub.period_end === null && sub.status !== "revoked") ||
+      (sub.period_end !== null &&
+        new Date(sub.period_end).getTime() > nowMs &&
+        sub.status !== "revoked");
+    if (isCurrentlyEffective) {
+      sub.status = "revoked";
+      sub.period_end = nowIso;
+      sub.revoked_at = nowIso;
+      sub.revoked_reason = trimmedReason;
+      revokedCount++;
+    }
+  }
+
+  const prevCustomLimit =
+    params.state.profiles?.get(params.userId)?.custom_ai_daily_limit ?? null;
+  if (params.clearCustomAiLimit && params.state.profiles) {
+    params.state.profiles.set(params.userId, { custom_ai_daily_limit: null });
+  }
+
+  let refundedOrderId: string | null = null;
+  if (params.refundLatestOrder) {
+    const paidOrders = Array.from(params.state.orders.values())
+      .filter((o) => o.user_id === params.userId && o.status === "paid")
+      .sort(
+        (a, b) =>
+          new Date(b.paid_at || b.created_at).getTime() -
+          new Date(a.paid_at || a.created_at).getTime()
+      );
+    if (paidOrders[0]) {
+      paidOrders[0].status = "refunded";
+      refundedOrderId = paidOrders[0].id;
+    }
+  }
+
+  const afterSubs = params.state.subscriptions
+    .filter((s) => s.user_id === params.userId)
+    .map((s) => ({ ...s }));
+
+  if (!params.state.auditLogs) {
+    params.state.auditLogs = [];
+  }
+  params.state.auditLogs.push({
+    action: "revoke_premium",
+    target_id: params.userId,
+    reason: trimmedReason,
+    metadata: {
+      revoked_count: revokedCount,
+      clear_custom_ai_limit: Boolean(params.clearCustomAiLimit),
+      previous_custom_ai_limit: prevCustomLimit,
+      refund_latest_order: Boolean(params.refundLatestOrder),
+      refunded_order_id: refundedOrderId,
+      before_subscriptions: beforeSubs,
+      after_subscriptions: afterSubs,
+    },
+  });
+
+  params.state.notifications.push({
+    user_id: params.userId,
+    type: "plan_changed",
+    title: "Gói Premium của bạn đã bị thu hồi",
+    body: trimmedReason
+      ? `Gói Premium của bạn đã bị thu hồi và tài khoản chuyển về gói Miễn phí. Lý do: ${trimmedReason}. Toàn bộ dữ liệu cũ của bạn vẫn được giữ nguyên.`
+      : "Gói Premium của bạn đã bị thu hồi và tài khoản chuyển về gói Miễn phí. Toàn bộ dữ liệu cũ của bạn vẫn được giữ nguyên.",
+    dedupe_key: `revoke_${params.userId}_${nowMs}`,
+  });
+
+  return {
+    ok: true,
+    revokedCount,
+    refundedOrderId,
   };
 }
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/guard";
 
@@ -15,6 +16,8 @@ const manageUserSchema = z.object({
   ]),
   reason: z.string().trim().optional(),
   custom_limit: z.number().int().min(0).max(10000).optional().nullable(),
+  clear_custom_ai_limit: z.boolean().optional(),
+  refund_latest_order: z.boolean().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -56,7 +59,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { target_user_id, action, reason, custom_limit } = parsed.data;
+    const {
+      target_user_id,
+      action,
+      reason,
+      custom_limit,
+      clear_custom_ai_limit,
+      refund_latest_order,
+    } = parsed.data;
 
     // Chặn admin tự khóa hoặc xóa chính mình
     if (target_user_id === user.id && (action === "block" || action === "delete_user")) {
@@ -84,10 +94,19 @@ export async function POST(request: NextRequest) {
       p_action: action,
       p_reason: reason || "",
       p_custom_limit: custom_limit ?? null,
+      p_clear_custom_ai_limit: clear_custom_ai_limit ?? false,
+      p_refund_latest_order: refund_latest_order ?? false,
     });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    try {
+      revalidatePath("/dashboard", "layout");
+      revalidatePath("/pricing");
+    } catch {
+      // Bỏ qua nếu gọi ngoài ngữ cảnh request Next
     }
 
     return NextResponse.json(data);

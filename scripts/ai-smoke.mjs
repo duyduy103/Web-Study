@@ -43,6 +43,149 @@ const aiExtractedQuestionsResponseZodSchema = z.object({
   questions: z.array(aiExtractedQuestionZodSchema),
 });
 
+const aiDistractorItemZodSchema = z
+  .object({
+    questionId: z.string().min(1),
+    distractors: z.array(z.string().trim().min(1)).length(3),
+    explanation: z.string().trim().min(1),
+  })
+  .superRefine((val, ctx) => {
+    const normalized = val.distractors.map((d) => d.toLowerCase());
+    if (new Set(normalized).size !== 3) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "3 đáp án nhiễu không được trùng nhau.",
+      });
+    }
+  });
+
+const aiDistractorsResponseZodSchema = z.object({
+  items: z.array(aiDistractorItemZodSchema),
+});
+
+async function runDistractorsSmokeTest(apiKey, overrideModel) {
+  const model =
+    overrideModel ||
+    process.env.GEMINI_MODEL_STRONG?.trim() ||
+    "gemini-3.5-flash";
+
+  const sampleItems = [
+    {
+      questionId: "q-sample-1",
+      stem: "Giao thức nào dùng để cấp phát địa chỉ IP động trong mạng LAN?",
+      correctAnswer: "DHCP",
+    },
+    {
+      questionId: "q-sample-2",
+      stem: "Cấu trúc dữ liệu nào hoạt động theo nguyên tắc LIFO (Vào sau - Ra trước)?",
+      correctAnswer: "Ngăn xếp (Stack)",
+    },
+    {
+      questionId: "q-sample-3",
+      stem: "Trong SQL, từ khóa nào dùng để loại bỏ các dòng trùng lặp trong kết quả SELECT?",
+      correctAnswer: "DISTINCT",
+    },
+    {
+      questionId: "q-sample-4",
+      stem: "Đơn vị đo cơ bản nhất của thông tin trong máy tính là gì?",
+      correctAnswer: "Bit",
+    },
+  ];
+
+  const responseSchema = {
+    type: Type.OBJECT,
+    description: "Danh sách đáp án nhiễu và giải thích cho từng câu hỏi.",
+    properties: {
+      items: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            questionId: {
+              type: Type.STRING,
+              description: "ID của câu hỏi đầu vào.",
+            },
+            distractors: {
+              type: Type.ARRAY,
+              description:
+                "Đúng 3 phương án nhiễu (sai) hợp lý, cùng độ dài và văn phong với đáp án đúng.",
+              items: { type: Type.STRING },
+            },
+            explanation: {
+              type: Type.STRING,
+              description:
+                "Giải thích ngắn gọn bằng tiếng Việt vì sao đáp án đúng là chính xác.",
+            },
+          },
+          required: ["questionId", "distractors", "explanation"],
+        },
+      },
+    },
+    required: ["items"],
+  };
+
+  const prompt = `Bạn là chuyên gia biên soạn đề kiểm tra trắc nghiệm cho giáo viên Việt Nam.
+Nhiệm vụ: Với mỗi câu hỏi và đáp án đúng trong <QUESTIONS_DATA>, hãy tạo đúng 3 phương án nhiễu (distractors) hợp lý và 1 câu giải thích ngắn gọn (explanation) bằng tiếng Việt.
+Giữ nguyên chính xác trường questionId của từng câu hỏi.
+<QUESTIONS_DATA>
+${JSON.stringify(sampleItems, null, 2)}
+</QUESTIONS_DATA>`;
+
+  const ai = new GoogleGenAI({ apiKey });
+  console.log(
+    `[AI Smoke Test - Distractors] Đang gọi Gemini (model=${model}, số câu=${sampleItems.length})...`
+  );
+  const startTime = Date.now();
+
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema,
+        temperature: 0.1,
+        maxOutputTokens: 16384,
+      },
+    });
+
+    const elapsedMs = Date.now() - startTime;
+    const parsed = JSON.parse(response.text || '{"items":[]}');
+    const zodResult = aiDistractorsResponseZodSchema.safeParse(parsed);
+
+    console.log("\n=== KẾT QUẢ AI DISTRACTORS SMOKE TEST ===");
+    console.log(`- Model: ${model}`);
+    console.log(`- Thời gian phản hồi: ${elapsedMs} ms`);
+    console.log(
+      `- Số token sử dụng: ${response.usageMetadata?.totalTokenCount ?? "N/A"}`
+    );
+
+    if (!zodResult.success) {
+      console.error(
+        `- Zod Validation lỗi:`,
+        JSON.stringify(zodResult.error.issues, null, 2)
+      );
+      process.exit(1);
+    }
+
+    console.log(`- Số câu sinh thành công: ${zodResult.data.items.length}/${sampleItems.length}`);
+    console.table(
+      zodResult.data.items.map((it) => ({
+        questionId: it.questionId,
+        distractorCount: it.distractors.length,
+        hasExplanation: Boolean(it.explanation),
+      }))
+    );
+  } catch (err) {
+    const elapsedMs = Date.now() - startTime;
+    console.error(`[AI Smoke Test - Distractors] Lỗi sau ${elapsedMs} ms:`);
+    console.error("- Model:", model);
+    console.error("- Status / Code:", err?.status ?? err?.code ?? "N/A");
+    console.error("- Message gốc:", err?.message ?? String(err));
+    process.exit(1);
+  }
+}
+
 async function runSmokeTest() {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) {
@@ -52,9 +195,24 @@ async function runSmokeTest() {
     process.exit(1);
   }
 
+  const rawArgs = process.argv.slice(2).filter((a) => a !== "--");
+  const isDistractorsMode = rawArgs.some(
+    (a) => a === "distractors" || a === "--distractors" || a === "--task=distractors"
+  );
+  const modelArg = rawArgs.find((a) => a.startsWith("--model="));
+  const overrideModel = modelArg ? modelArg.split("=")[1] : undefined;
+
+  if (isDistractorsMode) {
+    await runDistractorsSmokeTest(apiKey, overrideModel);
+    return;
+  }
+
   const model =
-    process.env.GEMINI_MODEL_FAST?.trim() || "gemini-3.5-flash-lite";
-  const argPath = process.argv[2] || "samples/05_de_lon_xon.docx";
+    overrideModel ||
+    process.env.GEMINI_MODEL_FAST?.trim() ||
+    "gemini-3.5-flash-lite";
+  const argPath =
+    rawArgs.find((a) => !a.startsWith("--")) || "samples/05_de_lon_xon.docx";
   const samplePath = path.resolve(process.cwd(), argPath);
 
   if (!fs.existsSync(samplePath)) {

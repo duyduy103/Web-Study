@@ -47,10 +47,16 @@ export function AdminOverviewDashboard({
   data,
   aiGlobalDailyLimit = 500,
   tokenCostPerMillion = 0.15,
+  fastModel = "",
+  strongModel = "",
+  modelConfigWarning = null,
 }: {
   data: SystemOverviewData;
   aiGlobalDailyLimit?: number;
   tokenCostPerMillion?: number;
+  fastModel?: string;
+  strongModel?: string;
+  modelConfigWarning?: string | null;
 }) {
   // Ước tính chi phí AI (USD & VND)
   const estimatedCostUsd = (data.ai.total_tokens / 1_000_000) * tokenCostPerMillion;
@@ -70,6 +76,12 @@ export function AdminOverviewDashboard({
           {vi.admin.overviewSubtitle}
         </p>
       </div>
+
+      {modelConfigWarning ? (
+        <div className="rounded-2xl border border-amber-800 bg-amber-950/60 p-4 text-xs font-semibold text-amber-300">
+          ⚠️ {modelConfigWarning} Chạy lệnh <code className="bg-slate-900 px-1 py-0.5 rounded text-teal-400">npm run ai:models</code> trên máy chủ để xác minh tính khả dụng của mô hình Gemini.
+        </div>
+      ) : null}
 
       {/* Nhóm 1: Người dùng & Hoạt động (DAU/WAU/MAU) */}
       <div className="space-y-3">
@@ -176,6 +188,11 @@ export function AdminOverviewDashboard({
                 className="h-full bg-teal-400"
               />
             </div>
+            {fastModel || strongModel ? (
+              <span className="mt-2 block text-[9px] text-slate-500 truncate" title={`Fast: ${fastModel} | Strong: ${strongModel}`}>
+                Fast: {fastModel} • Strong: {strongModel}
+              </span>
+            ) : null}
           </div>
 
           <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 shadow-sm">

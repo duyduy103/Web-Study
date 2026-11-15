@@ -9,7 +9,9 @@
     "lint": "eslint .",
     "test": "vitest run",
     "ai:smoke": "node --env-file=.env scripts/ai-smoke.mjs",
-    "payments:simulate": "node --env-file=.env scripts/payments-simulate.mjs"
+    "ai:models": "node --env-file=.env scripts/ai-models.mjs",
+    "payments:simulate": "node --env-file=.env scripts/payments-simulate.mjs",
+    "db:check": "node --env-file=.env scripts/db-check.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.0.0",

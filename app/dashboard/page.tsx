@@ -23,6 +23,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { CreateSetButton } from "@/components/features/dashboard/create-set-button";
+
+export const dynamic = "force-dynamic";
 import { PlanBadge } from "@/components/features/dashboard/plan-badge";
 import { NotificationBell } from "@/components/features/dashboard/notification-bell";
 import { DashboardUsageBar } from "@/components/features/dashboard/dashboard-usage-bar";

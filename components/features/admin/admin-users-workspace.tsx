@@ -53,6 +53,8 @@ export function AdminUsersWorkspace({
   const [actionReason, setActionReason] = React.useState("");
   const [customAiLimitInput, setCustomAiLimitInput] = React.useState<number>(50);
   const [premiumDurationDays, setPremiumDurationDays] = React.useState<number>(30);
+  const [revokeClearCustomAiLimit, setRevokeClearCustomAiLimit] = React.useState<boolean>(true);
+  const [revokeRefundLatestOrder, setRevokeRefundLatestOrder] = React.useState<boolean>(true);
   const [actionLoading, setActionLoading] = React.useState(false);
   const [actionError, setActionError] = React.useState<string | null>(null);
 
@@ -117,6 +119,10 @@ export function AdminUsersWorkspace({
           action: apiAction,
           reason: actionReason,
           custom_limit: customLimitParam,
+          clear_custom_ai_limit:
+            modalAction === "revoke_premium" ? revokeClearCustomAiLimit : false,
+          refund_latest_order:
+            modalAction === "revoke_premium" ? revokeRefundLatestOrder : false,
         }),
       });
 
@@ -373,10 +379,12 @@ export function AdminUsersWorkspace({
                                 onClick={() => {
                                   setActiveModalUser(u);
                                   setModalAction("revoke_premium");
+                                  setRevokeClearCustomAiLimit(true);
+                                  setRevokeRefundLatestOrder(true);
                                   setActionReason("");
                                 }}
                                 className="h-7 text-[11px] bg-slate-900 border-amber-900 text-amber-400 hover:bg-amber-950"
-                                title="Hủy quyền lợi Premium"
+                                title="Thu hồi mọi gói Premium hiệu lực"
                               >
                                 {vi.admin.users.actionRevokePremium}
                               </Button>
@@ -526,8 +534,33 @@ export function AdminUsersWorkspace({
             ) : null}
 
             {modalAction === "revoke_premium" ? (
-              <div className="rounded-xl border border-amber-900/60 bg-amber-950/40 p-3 text-xs text-amber-300">
-                Tài khoản sẽ được chuyển về gói Miễn phí (Free) và các giới hạn tương ứng sẽ có hiệu lực ngay lập tức.
+              <div className="space-y-3">
+                <div className="rounded-xl border border-amber-900/60 bg-amber-950/40 p-3 text-xs text-amber-300">
+                  Thu hồi TẤT CẢ gói Premium đang hiệu lực của tài khoản này (đặt trạng thái{" "}
+                  <code>revoked</code> và <code>period_end = now()</code>). Tài khoản sẽ chuyển về gói Miễn phí ngay lập tức; toàn bộ bộ câu hỏi và dữ liệu cũ được giữ nguyên.
+                </div>
+                <label className="flex items-start gap-2.5 text-xs text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={revokeClearCustomAiLimit}
+                    onChange={(e) => setRevokeClearCustomAiLimit(e.target.checked)}
+                    className="mt-0.5 rounded border-slate-700 bg-slate-900 text-teal-500"
+                  />
+                  <span>
+                    Xóa hạn mức AI riêng (ngoại lệ) nếu có để áp dụng đúng hạn mức gói Miễn phí
+                  </span>
+                </label>
+                <label className="flex items-start gap-2.5 text-xs text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={revokeRefundLatestOrder}
+                    onChange={(e) => setRevokeRefundLatestOrder(e.target.checked)}
+                    className="mt-0.5 rounded border-slate-700 bg-slate-900 text-teal-500"
+                  />
+                  <span>
+                    Đánh dấu đơn hàng đã thanh toán liên quan gần nhất là đã hoàn tiền (<code>refunded</code>)
+                  </span>
+                </label>
               </div>
             ) : null}
 

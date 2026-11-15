@@ -16,6 +16,7 @@ import {
   saveAiCache,
 } from "@/lib/ai/quota-and-cache";
 import { AiClassifiedError, classifyAiError } from "@/lib/ai/errors";
+import { getVietnamDateString } from "@/lib/entitlements";
 import { vi } from "@/lib/i18n/vi";
 
 export interface InlineMediaPart {
@@ -237,7 +238,40 @@ export async function callGeminiStructured<TOutput>(
           ? err
           : new AiClassifiedError(classifyAiError(err));
 
+      console.error(
+        `[AI ${options.task}] code=${lastClassified.code} original=${lastClassified.originalCode} status=${lastClassified.httpStatus}`
+      );
+
       if (!lastClassified.retryable) {
+        // Lỗi cấu hình (model không tồn tại, key sai): không trừ lượt AI người dùng
+        if (
+          lastClassified.code === "invalid_key" ||
+          lastClassified.code === "model_unavailable"
+        ) {
+          try {
+            const todayVn = getVietnamDateString();
+            const { data: usageRow } = await options.supabase
+              .from("ai_usage")
+              .select("calls")
+              .eq("user_id", options.userId)
+              .eq("date", todayVn)
+              .maybeSingle();
+
+            if (
+              usageRow &&
+              typeof usageRow.calls === "number" &&
+              usageRow.calls > 0
+            ) {
+              await options.supabase
+                .from("ai_usage")
+                .update({ calls: usageRow.calls - 1 })
+                .eq("user_id", options.userId)
+                .eq("date", todayVn);
+            }
+          } catch {
+            // Không làm gián đoạn ném lỗi chính
+          }
+        }
         break;
       }
     }

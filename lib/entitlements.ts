@@ -57,6 +57,8 @@ export interface ActiveSubscriptionInput {
   status: string;
   period_end: string | null;
   source?: string;
+  revoked_at?: string | null;
+  revoked_reason?: string | null;
 }
 
 /**
@@ -97,20 +99,29 @@ export function normalizePlanLimits(
   isPremium: boolean,
   customAiDailyLimit?: number | null
 ): PlanLimits {
-  const defaults = isPremium ? DEFAULT_PREMIUM_LIMITS : DEFAULT_FREE_LIMITS;
   const r = raw ?? {};
+  const hasExplicitKeys = Object.keys(r).length > 0;
+  // Nếu không truyền object limits (null/rỗng) thì dùng mặc định theo gói;
+  // nếu có object limits nhưng THIẾU khóa cụ thể thì dùng mặc định an toàn của gói Free cho khóa thiếu (không để lỗi null).
+  const fallbackDefaults = hasExplicitKeys
+    ? DEFAULT_FREE_LIMITS
+    : isPremium
+    ? DEFAULT_PREMIUM_LIMITS
+    : DEFAULT_FREE_LIMITS;
 
   const maxSets =
-    typeof r.max_sets === "number" && r.max_sets > 0
+    typeof r.max_sets === "number" && Number.isFinite(r.max_sets) && r.max_sets > 0
       ? Math.floor(r.max_sets)
-      : defaults.max_sets;
+      : fallbackDefaults.max_sets;
 
   const baseAiDaily =
-    typeof r.ai_daily === "number" && r.ai_daily >= 0
+    typeof r.ai_daily === "number" && Number.isFinite(r.ai_daily) && r.ai_daily >= 0
       ? Math.floor(r.ai_daily)
-      : typeof r.ai_daily_limit === "number" && r.ai_daily_limit >= 0
+      : typeof r.ai_daily_limit === "number" &&
+        Number.isFinite(r.ai_daily_limit) &&
+        r.ai_daily_limit >= 0
       ? Math.floor(r.ai_daily_limit)
-      : defaults.ai_daily;
+      : fallbackDefaults.ai_daily;
 
   const effectiveAiDaily =
     typeof customAiDailyLimit === "number" &&
@@ -120,41 +131,55 @@ export function normalizePlanLimits(
       : baseAiDaily;
 
   const maxFileMb =
-    typeof r.max_file_mb === "number" && r.max_file_mb > 0
+    typeof r.max_file_mb === "number" &&
+    Number.isFinite(r.max_file_mb) &&
+    r.max_file_mb > 0
       ? Math.floor(r.max_file_mb)
-      : defaults.max_file_mb;
+      : fallbackDefaults.max_file_mb;
 
   const maxPdfPages =
-    typeof r.max_pdf_pages === "number" && r.max_pdf_pages > 0
+    typeof r.max_pdf_pages === "number" &&
+    Number.isFinite(r.max_pdf_pages) &&
+    r.max_pdf_pages > 0
       ? Math.floor(r.max_pdf_pages)
-      : defaults.max_pdf_pages;
+      : fallbackDefaults.max_pdf_pages;
 
   const storageMb =
-    typeof r.storage_mb === "number" && r.storage_mb > 0
+    typeof r.storage_mb === "number" &&
+    Number.isFinite(r.storage_mb) &&
+    r.storage_mb > 0
       ? Math.floor(r.storage_mb)
-      : defaults.storage_mb;
+      : fallbackDefaults.storage_mb;
 
   const maxPrintVersions =
-    typeof r.max_print_versions === "number" && r.max_print_versions > 0
+    typeof r.max_print_versions === "number" &&
+    Number.isFinite(r.max_print_versions) &&
+    r.max_print_versions > 0
       ? Math.floor(r.max_print_versions)
-      : typeof r.max_export_versions === "number" && r.max_export_versions > 0
+      : typeof r.max_export_versions === "number" &&
+        Number.isFinite(r.max_export_versions) &&
+        r.max_export_versions > 0
       ? Math.floor(r.max_export_versions)
-      : defaults.max_print_versions;
+      : fallbackDefaults.max_print_versions;
 
   const canExportDocx =
     typeof r.can_export_docx === "boolean"
       ? r.can_export_docx
-      : defaults.can_export_docx;
+      : fallbackDefaults.can_export_docx;
 
   const maxQuestionsPerSet =
-    r.max_questions_per_set === null || typeof r.max_questions_per_set === "number"
+    r.max_questions_per_set === null ||
+    (typeof r.max_questions_per_set === "number" &&
+      Number.isFinite(r.max_questions_per_set))
       ? (r.max_questions_per_set as number | null)
-      : defaults.max_questions_per_set;
+      : fallbackDefaults.max_questions_per_set;
 
   const maxSetsPerDay =
-    r.max_sets_per_day === null || typeof r.max_sets_per_day === "number"
+    r.max_sets_per_day === null ||
+    (typeof r.max_sets_per_day === "number" &&
+      Number.isFinite(r.max_sets_per_day))
       ? (r.max_sets_per_day as number | null)
-      : defaults.max_sets_per_day;
+      : fallbackDefaults.max_sets_per_day;
 
   return {
     max_sets: maxSets,
@@ -179,36 +204,79 @@ export function normalizePlanLimits(
 export function evaluateEntitlements(params: {
   customAiDailyLimit?: number | null;
   subscription?: ActiveSubscriptionInput | null;
+  subscriptions?: ActiveSubscriptionInput[] | null;
   planLimitsOverride?: Record<string, unknown> | null;
   planPrices?: PlanPrices;
   planPeriodDays?: PlanPeriodDays;
   now?: Date;
 }): UserEntitlements {
   const checkTime = params.now ? params.now.getTime() : Date.now();
-  const sub = params.subscription;
+  const candidateSubs: ActiveSubscriptionInput[] =
+    params.subscriptions && params.subscriptions.length > 0
+      ? params.subscriptions
+      : params.subscription
+      ? [params.subscription]
+      : [];
+
+  // Chọn dòng hiệu lực tốt nhất (status = 'active', chưa bị thu hồi, period_end > checkTime; ưu tiên vĩnh viễn hoặc hạn xa nhất)
+  const validSubs = candidateSubs
+    .filter((s) => {
+      if (s.plan_code !== "premium") return false;
+      if (s.status !== "active" || Boolean(s.revoked_at)) return false;
+      if (!s.period_end) return true;
+      const exp = new Date(s.period_end).getTime();
+      return Number.isFinite(exp) && exp > checkTime;
+    })
+    .sort((a, b) => {
+      if (!a.period_end && b.period_end) return -1;
+      if (a.period_end && !b.period_end) return 1;
+      if (!a.period_end && !b.period_end) return 0;
+      return (
+        new Date(b.period_end!).getTime() - new Date(a.period_end!).getTime()
+      );
+    });
+
+  const sub = validSubs[0] ?? candidateSubs[0] ?? null;
 
   let isPremium = false;
   let status: SubscriptionStatus = "active";
   let periodEnd: string | null = null;
   let source = "default";
 
-  if (sub && sub.plan_code === "premium" && sub.status === "active") {
-    if (!sub.period_end) {
-      isPremium = true;
-      periodEnd = null;
+  if (sub && sub.plan_code === "premium") {
+    if (sub.status === "revoked" || Boolean(sub.revoked_at)) {
+      isPremium = false;
+      status = "revoked";
+      periodEnd = sub.period_end;
       source = sub.source ?? "manual_grant";
-    } else {
-      const expiry = new Date(sub.period_end).getTime();
-      if (expiry > checkTime) {
+    } else if (sub.status === "canceled") {
+      isPremium = false;
+      status = "canceled";
+      periodEnd = sub.period_end;
+      source = sub.source ?? "manual_grant";
+    } else if (sub.status === "active") {
+      if (!sub.period_end) {
         isPremium = true;
-        periodEnd = sub.period_end;
+        periodEnd = null;
         source = sub.source ?? "manual_grant";
       } else {
-        isPremium = false;
-        status = "expired";
-        periodEnd = sub.period_end;
-        source = sub.source ?? "manual_grant";
+        const expiry = new Date(sub.period_end).getTime();
+        if (expiry > checkTime) {
+          isPremium = true;
+          periodEnd = sub.period_end;
+          source = sub.source ?? "manual_grant";
+        } else {
+          isPremium = false;
+          status = "expired";
+          periodEnd = sub.period_end;
+          source = sub.source ?? "manual_grant";
+        }
       }
+    } else {
+      isPremium = false;
+      status = "expired";
+      periodEnd = sub.period_end;
+      source = sub.source ?? "manual_grant";
     }
   }
 
@@ -331,20 +399,51 @@ export async function getUserEntitlements(
       custom_ai_daily_limit?: number | null;
     };
 
-    const isPrem = Boolean(raw.is_premium || raw.plan_code === "premium");
+    const rawStatus = (raw.status as SubscriptionStatus) ?? "active";
+    const rawPeriodEnd = raw.period_end ?? null;
+    const isNotExpired =
+      !rawPeriodEnd || new Date(rawPeriodEnd).getTime() > Date.now();
+
+    // Chỉ coi là Premium hợp lệ khi status === 'active' VÀ chưa hết hạn (period_end > now())
+    const isPrem = Boolean(
+      (raw.is_premium || raw.plan_code === "premium") &&
+        rawStatus === "active" &&
+        isNotExpired
+    );
+
+    const effectiveStatus: SubscriptionStatus = isPrem
+      ? "active"
+      : rawStatus === "revoked" || rawStatus === "canceled" || rawStatus === "expired"
+      ? rawStatus
+      : !isNotExpired && raw.plan_code === "premium"
+      ? "expired"
+      : "active";
+
     const customLimit =
       typeof raw.custom_ai_daily_limit === "number"
         ? raw.custom_ai_daily_limit
         : null;
 
+    // Nếu bị thu hồi/hết hạn mà raw.limits vẫn mang giá trị của gói cũ thì ép tính lại theo gói Free
+    const rawLimitsToNormalize =
+      isPrem === Boolean(raw.is_premium || raw.plan_code === "premium")
+        ? raw.limits
+        : null;
+
+    const effectiveLimits = normalizePlanLimits(
+      rawLimitsToNormalize,
+      isPrem,
+      customLimit
+    );
+
     return {
       plan_code: isPrem ? "premium" : "free",
-      plan_name: raw.plan_name ?? (isPrem ? "Premium" : "Miễn phí"),
+      plan_name: isPrem ? "Premium" : "Miễn phí",
       is_premium: isPrem,
-      status: (raw.status as SubscriptionStatus) ?? "active",
-      period_end: raw.period_end ?? null,
+      status: effectiveStatus,
+      period_end: rawPeriodEnd,
       source: raw.source ?? "default",
-      limits: normalizePlanLimits(raw.limits, isPrem, customLimit),
+      limits: effectiveLimits,
       prices: raw.prices ?? (isPrem ? DEFAULT_PREMIUM_PRICES : {}),
       period_days:
         raw.period_days ?? (isPrem ? DEFAULT_PREMIUM_PERIOD_DAYS : {}),
@@ -352,12 +451,20 @@ export async function getUserEntitlements(
     };
   }
 
-  // Nếu đang kiểm tra strict (fail-closed) và RPC get_entitlements trả về lỗi thật
-  if (options?.strict && rpcError) {
+  if (rpcError) {
+    console.error("[get_entitlements] Postgres RPC error:", {
+      code: rpcError.code ?? "UNKNOWN",
+      message: rpcError.message,
+      details: rpcError.details ?? null,
+    });
+  }
+
+  // Nếu đang kiểm tra strict (fail-closed) và RPC trả về lỗi hệ thống thật (ngoài lỗi 55000 v_latest_prem của migration 14)
+  if (options?.strict && rpcError && rpcError.code !== "55000") {
     throw new Error(vi.limits.systemErrorFailClosed);
   }
 
-  // 2. Dự phòng: Truy vấn trực tiếp profiles, subscriptions & plans
+  // 2. Dự phòng: Truy vấn trực tiếp profiles, subscriptions (chỉ nhận status='active' & period_end > now) & plans
   const safeQueryProfile = async () => {
     try {
       return await supabase
@@ -372,6 +479,19 @@ export async function getUserEntitlements(
 
   const safeQuerySubscription = async () => {
     try {
+      const activeRes = await supabase
+        .from("subscriptions")
+        .select("id, plan_code, status, period_end, source")
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (activeRes.error || activeRes.data) {
+        return activeRes;
+      }
+
       return await supabase
         .from("subscriptions")
         .select("id, plan_code, status, period_end, source")
@@ -402,10 +522,15 @@ export async function getUserEntitlements(
   ]);
 
   if (options?.strict && (profileRes?.error || subRes?.error)) {
+    console.error("[get_entitlements] Fallback DB query error:", {
+      profileErrorCode: profileRes?.error?.code ?? null,
+      subErrorCode: subRes?.error?.code ?? null,
+    });
     throw new Error(vi.limits.systemErrorFailClosed);
   }
 
   const sub = subRes.data as ActiveSubscriptionInput | null;
+
   if (sub) {
     void ensureSubscriptionMilestoneNotifications(supabase, userId, sub);
   }

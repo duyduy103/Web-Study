@@ -11,6 +11,10 @@ function parseNonNegativeInt(
   return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : fallback;
 }
 
+/**
+ * Hạn mức AI thực tế ở mọi route/trang đều lấy từ `get_entitlements` (`plans.limits.ai_daily`).
+ * Hàm thuần này chỉ giữ lại để tương thích bộ unit test cũ (`tests/roles-and-limits.test.ts`).
+ */
 export function getAiDailyLimitForRole(role: UserRole): number {
   const fallback = parseNonNegativeInt(
     process.env.AI_DAILY_LIMIT,
@@ -26,4 +30,5 @@ export function getAiDailyLimitForRole(role: UserRole): number {
 export function getAiGlobalDailyLimit(): number {
   return parseNonNegativeInt(process.env.AI_GLOBAL_DAILY_LIMIT, 500);
 }
+
 

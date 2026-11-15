@@ -62,6 +62,7 @@ export function DistractorGeneratorPanel({
     []
   );
   const [serverSkipped, setServerSkipped] = React.useState<SkippedItem[]>([]);
+  const [serverFailed, setServerFailed] = React.useState<SkippedItem[]>([]);
 
   React.useEffect(() => {
     setSelectedIds(validCandidates.map((c) => c.id));
@@ -97,9 +98,11 @@ export function DistractorGeneratorPanel({
     setErrorMessage(null);
     setStatusMessage(null);
     setServerSkipped([]);
+    setServerFailed([]);
 
     const collectedSnapshots: UndoSnapshotItem[] = [];
     const collectedSkipped: SkippedItem[] = [];
+    const collectedFailed: SkippedItem[] = [];
     let totalUpdated = 0;
 
     try {
@@ -128,6 +131,7 @@ export function DistractorGeneratorPanel({
         const payload = data as {
           updatedCount: number;
           skipped: SkippedItem[];
+          failed?: SkippedItem[];
           undoSnapshots: UndoSnapshotItem[];
           remainingQuota?: number;
         };
@@ -135,6 +139,9 @@ export function DistractorGeneratorPanel({
         totalUpdated += payload.updatedCount;
         collectedSnapshots.push(...payload.undoSnapshots);
         collectedSkipped.push(...payload.skipped);
+        if (Array.isArray(payload.failed)) {
+          collectedFailed.push(...payload.failed);
+        }
         if (typeof payload.remainingQuota === "number") {
           setRemainingQuota(payload.remainingQuota);
         }
@@ -142,9 +149,13 @@ export function DistractorGeneratorPanel({
 
       setUndoSnapshots(collectedSnapshots);
       setServerSkipped(collectedSkipped);
-      setStatusMessage(
-        `${vi.ai.distractors.successPrefix} ${totalUpdated} ${vi.ai.distractors.successSuffix}`
-      );
+      setServerFailed(collectedFailed);
+
+      if (totalUpdated > 0) {
+        setStatusMessage(
+          `${vi.ai.distractors.successPrefix} ${totalUpdated} ${vi.ai.distractors.successSuffix}`
+        );
+      }
       router.refresh();
     } catch (err) {
       setErrorMessage(
@@ -303,6 +314,35 @@ export function DistractorGeneratorPanel({
                 : `${vi.ai.distractors.generateButton} (${selectedIds.length})`}
             </Button>
           </div>
+        </div>
+      ) : null}
+
+      {serverFailed.length > 0 ? (
+        <div className="space-y-2 rounded-xl border border-red-200 bg-red-50/80 px-3.5 py-2.5 text-xs text-red-900">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="font-semibold">
+              {vi.ai.distractors.failedTitle} ({serverFailed.length})
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isGenerating}
+              onClick={() => {
+                setSelectedIds(serverFailed.map((f) => f.questionId));
+                setServerFailed([]);
+              }}
+              className="h-6 text-[11px] border-red-300 text-red-800 hover:bg-red-100"
+            >
+              {vi.ai.distractors.retryFailedButton} ({serverFailed.length})
+            </Button>
+          </div>
+          {serverFailed.map((item) => (
+            <p key={item.questionId}>
+              • {item.stem.slice(0, 60)}:{" "}
+              <span className="font-medium text-red-700">{item.reason}</span>
+            </p>
+          ))}
         </div>
       ) : null}
 

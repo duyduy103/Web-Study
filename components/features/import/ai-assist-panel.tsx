@@ -410,12 +410,26 @@ export function AiAssistPanel({
             }>;
             explanation: string;
           }>;
+          failed?: Array<{
+            questionId: string;
+            stem: string;
+            reason: string;
+          }>;
           remainingQuota?: number;
         };
 
         if (typeof payload.remainingQuota === "number") {
           latestQuota = payload.remainingQuota;
           setRemainingQuota(payload.remainingQuota);
+        }
+
+        if (Array.isArray(payload.failed) && payload.failed.length > 0) {
+          const failedDetails = payload.failed
+            .map((f) => `• ${f.stem.slice(0, 40)}: ${f.reason}`)
+            .join("\n");
+          setDistractorError(
+            `Một số câu chưa tạo được đáp án nhiễu (${payload.failed.length} câu):\n${failedDetails}`
+          );
         }
 
         for (const out of payload.results) {

@@ -315,6 +315,12 @@ export const vi = {
         "Đã hoàn tác các câu hỏi về dạng Hỏi - Đáp ngắn ban đầu.",
       skippedTitle: "Các câu bị bỏ qua (chưa có đáp án đúng):",
       skippedReasonMissingAnswer: "Thiếu đáp án đúng nên AI không tự suy diễn",
+      failedTitle: "Các câu chưa tạo được đáp án nhiễu:",
+      retryFailedButton: "Thử lại các câu bị lỗi",
+      partialSuccessNotice: "Đã xử lý xong với một số câu cần thử lại:",
+      failedDistractorReason:
+        "AI không tạo đủ 3 đáp án nhiễu phân biệt hoặc trùng với đáp án đúng.",
+      missingResultReason: "AI không trả về kết quả cho câu hỏi này.",
       successPrefix: "Đã tạo thành công đáp án nhiễu và giải thích cho",
       successSuffix: "câu hỏi!",
     },

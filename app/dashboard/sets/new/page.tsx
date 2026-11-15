@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { vi } from "@/lib/i18n/vi";
 import { ImportSetForm } from "@/components/features/import/import-set-form";
 
+export const dynamic = "force-dynamic";
+
 export default async function NewQuestionSetPage() {
   const supabase = await createClient();
   const {

@@ -14,6 +14,8 @@ import {
 import { ReviewWorkspace } from "@/components/features/review/review-workspace";
 import type { ReviewQuestionItem } from "@/lib/review/types";
 
+export const dynamic = "force-dynamic";
+
 interface SetDetailPageProps {
   params: Promise<{ id: string }>;
 }

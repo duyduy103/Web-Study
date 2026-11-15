@@ -191,23 +191,11 @@ export function normalizeAiExtractedQuestions(
 // Schema cho Tác vụ 2: Sinh đáp án nhiễu + giải thích (Distractor Generation)
 // ============================================================================
 
-export const aiDistractorItemZodSchema = z
-  .object({
-    questionId: z.string().min(1),
-    distractors: z
-      .array(z.string().trim().min(1))
-      .length(3, "Phải có đúng 3 đáp án nhiễu."),
-    explanation: z.string().trim().min(1),
-  })
-  .superRefine((val, ctx) => {
-    const normalized = val.distractors.map((d) => d.toLowerCase());
-    if (new Set(normalized).size !== 3) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "3 đáp án nhiễu không được trùng nhau.",
-      });
-    }
-  });
+export const aiDistractorItemZodSchema = z.object({
+  questionId: z.string().min(1),
+  distractors: z.array(z.string().trim()).default([]),
+  explanation: z.string().trim().optional().default(""),
+});
 
 export const aiDistractorsResponseZodSchema = z.object({
   items: z.array(aiDistractorItemZodSchema),

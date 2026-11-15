@@ -204,7 +204,11 @@ export async function enforceAccountImportLimits(params: {
     entitlements = await getUserEntitlements(supabase, userId, {
       strict: true,
     });
-  } catch {
+  } catch (err) {
+    console.error("[enforceAccountImportLimits] getUserEntitlements failed:", {
+      userId,
+      message: err instanceof Error ? err.message : String(err),
+    });
     throw new Error(vi.limits.systemErrorFailClosed);
   }
 
@@ -214,6 +218,10 @@ export async function enforceAccountImportLimits(params: {
     .eq("owner_id", userId);
 
   if (setsError) {
+    console.error("[enforceAccountImportLimits] question_sets Postgres error:", {
+      code: setsError.code ?? "UNKNOWN",
+      message: setsError.message,
+    });
     throw new Error(vi.limits.systemErrorFailClosed);
   }
 
@@ -227,11 +235,18 @@ export async function enforceAccountImportLimits(params: {
       .in("set_id", setIds);
 
     if (filesError) {
-      throw new Error(vi.limits.systemErrorFailClosed);
-    }
-
-    for (const f of files ?? []) {
-      currentStorageBytes += Number(f.file_size_bytes) || 0;
+      // Nếu chỉ thiếu cột file_size_bytes (42703) ở DB cũ thì log cảnh báo và tính 0B, còn lỗi hệ thống khác thì fail-closed
+      console.error("[enforceAccountImportLimits] source_files Postgres error:", {
+        code: filesError.code ?? "UNKNOWN",
+        message: filesError.message,
+      });
+      if (filesError.code !== "42703") {
+        throw new Error(vi.limits.systemErrorFailClosed);
+      }
+    } else {
+      for (const f of files ?? []) {
+        currentStorageBytes += Number(f.file_size_bytes) || 0;
+      }
     }
   }
 

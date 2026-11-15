@@ -20,7 +20,7 @@ export type FeedbackType = "bug" | "idea" | "question" | "upgrade_request" | "ot
 export type FeedbackStatus = "new" | "in_progress" | "resolved" | "ignored";
 export type FeedbackPriority = "low" | "medium" | "high" | "urgent";
 export type PlanCode = "free" | "premium";
-export type SubscriptionStatus = "active" | "canceled" | "expired";
+export type SubscriptionStatus = "active" | "canceled" | "expired" | "revoked";
 export type OrderPeriod = "month" | "year";
 export type OrderStatus = "pending" | "paid" | "expired" | "cancelled" | "refunded";
 export type PaymentEventStatus = "processed" | "needs_review" | "ignored";
@@ -1060,6 +1060,9 @@ export type Database = {
           period_end: string | null;
           source: string;
           granted_by: string | null;
+          revoked_at?: string | null;
+          revoked_reason?: string | null;
+          revoked_by?: string | null;
           created_at: string;
         };
         Insert: {
@@ -1070,6 +1073,9 @@ export type Database = {
           period_end?: string | null;
           source?: string;
           granted_by?: string | null;
+          revoked_at?: string | null;
+          revoked_reason?: string | null;
+          revoked_by?: string | null;
           created_at?: string;
         };
         Update: {
@@ -1080,6 +1086,9 @@ export type Database = {
           period_end?: string | null;
           source?: string;
           granted_by?: string | null;
+          revoked_at?: string | null;
+          revoked_reason?: string | null;
+          revoked_by?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -1460,6 +1469,8 @@ export type Database = {
           p_action: string;
           p_reason: string;
           p_custom_limit?: number | null;
+          p_clear_custom_ai_limit?: boolean;
+          p_refund_latest_order?: boolean;
         };
         Returns: Json;
       };
@@ -1540,6 +1551,12 @@ export type Database = {
           p_limits: Json;
           p_period_days?: Json | null;
           p_reason?: string | null;
+        };
+        Returns: Json;
+      };
+      debug_check_user_entitlements: {
+        Args: {
+          p_email_or_id?: string | null;
         };
         Returns: Json;
       };
