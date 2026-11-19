@@ -28,6 +28,8 @@ export const dynamic = "force-dynamic";
 import { PlanBadge } from "@/components/features/dashboard/plan-badge";
 import { NotificationBell } from "@/components/features/dashboard/notification-bell";
 import { DashboardUsageBar } from "@/components/features/dashboard/dashboard-usage-bar";
+import { StudentClassAssignments } from "@/components/features/classes/student-class-assignments";
+import type { StudentClassAssignmentItem } from "@/lib/classes/assignments";
 
 export default async function DashboardPage(props: {
   searchParams?: Promise<{ confirmed?: string }>;
@@ -52,6 +54,7 @@ export default async function DashboardPage(props: {
     { data: examsDataRaw },
     studySummaryRes,
     selfAttemptsRes,
+    studentAssignmentsRes,
   ] = await Promise.all([
     getUserEntitlements(supabase, user.id),
     getUserAiQuotaStatus(supabase, user.id, role),
@@ -77,11 +80,21 @@ export default async function DashboardPage(props: {
           .from("attempts")
           .select("id, exam_id, set_id, attempt_token, status, score, started_at, submitted_at")
           .eq("student_id", user.id)
+          .is("assignment_id", null)
           .not("attempt_token", "is", null)
           .order("started_at", { ascending: false })
           .limit(12)
       : Promise.resolve({ data: [] as never[] }),
+    !isTeacher
+      ? supabase.rpc("get_student_class_assignments", { p_class_id: null })
+      : Promise.resolve({ data: null }),
   ]);
+
+  const studentClassAssignments = (
+    (studentAssignmentsRes.data as {
+      assignments?: StudentClassAssignmentItem[];
+    } | null)?.assignments ?? []
+  ).slice(0, 6);
 
   let examsData = (examsDataRaw ?? []) as Array<{
     id: string;
@@ -271,6 +284,12 @@ export default async function DashboardPage(props: {
           </div>
 
           <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard/classes"
+              className="inline-flex min-h-[40px] items-center rounded-xl border border-teal-200 bg-teal-50/70 px-3 py-1.5 text-xs font-semibold text-teal-800 hover:bg-teal-100 sm:text-sm"
+            >
+              🏫 {vi.classes.navLabel}
+            </Link>
             <NotificationBell />
             <Link
               href="/dashboard/account"
@@ -324,7 +343,15 @@ export default async function DashboardPage(props: {
             </p>
           </div>
 
-          <div className="relative">
+          <div className="relative flex flex-wrap items-center gap-2.5">
+            {!isTeacher ? (
+              <Link
+                href="/join"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-white/40 bg-white/15 px-4 text-sm font-bold text-white backdrop-blur-xs hover:bg-white/25"
+              >
+                + {vi.classes.joinClassButton}
+              </Link>
+            ) : null}
             <CreateSetButton />
           </div>
         </section>
@@ -336,6 +363,31 @@ export default async function DashboardPage(props: {
           setCount={sets.length}
           storageBytes={storageBytesUsed}
         />
+
+        {!isTeacher ? (
+          <section className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">
+                  📋 {vi.classes.assignments.dashboardSectionTitle}
+                </h2>
+                <p className="text-xs text-slate-600">
+                  {vi.classes.assignments.dashboardSectionSubtitle}
+                </p>
+              </div>
+              <Link
+                href="/dashboard/classes"
+                className="inline-flex min-h-[44px] items-center text-sm font-semibold text-teal-700 hover:underline"
+              >
+                {vi.classes.assignments.dashboardViewAllClasses}
+              </Link>
+            </div>
+            <StudentClassAssignments
+              assignments={studentClassAssignments}
+              showClassName
+            />
+          </section>
+        ) : null}
 
         {!isTeacher ? (
           <section className="rounded-3xl border-2 border-[var(--space-border-strong)] bg-[var(--space-surface)] p-5 shadow-sm transition-all sm:p-7">

@@ -66,6 +66,12 @@ function mapStartAttemptErrorToVietnamese(code: string): string {
       return vi.studentExam.expiredWindowTitle;
     case "MAX_ATTEMPTS_REACHED":
       return vi.studentExam.maxAttemptsReachedError;
+    case "CLASS_ACCESS_REVOKED":
+      return vi.classes.assignments.errors.classAccessRevoked;
+    case "ASSIGNMENT_CLOSED":
+      return vi.classes.assignments.errors.assignmentClosed;
+    case "ASSIGNMENT_LOCKED_AFTER_DUE":
+      return vi.classes.assignments.errors.assignmentLockedAfterDue;
     default:
       return vi.importSet.errors.saveFailed;
   }

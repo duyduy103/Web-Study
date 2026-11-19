@@ -57,10 +57,12 @@ export function ActiveRecallSessionClient({
   code,
   leechOnly,
   accountMode = false,
+  overviewHrefOverride,
 }: {
   code: string;
   leechOnly: boolean;
   accountMode?: boolean;
+  overviewHrefOverride?: string;
 }) {
   if (accountMode) {
     return (
@@ -70,6 +72,7 @@ export function ActiveRecallSessionClient({
         learnerSecret=""
         accountMode={true}
         resetLearnerSession={() => {}}
+        overviewHrefOverride={overviewHrefOverride}
       />
     );
   }
@@ -83,6 +86,7 @@ export function ActiveRecallSessionClient({
           learnerSecret={learnerSecret}
           accountMode={false}
           resetLearnerSession={resetLearnerSession}
+          overviewHrefOverride={overviewHrefOverride}
         />
       )}
     </LearnerOnboardingGate>
@@ -95,17 +99,21 @@ function ActiveRecallInner({
   learnerSecret,
   accountMode,
   resetLearnerSession,
+  overviewHrefOverride,
 }: {
   code: string;
   leechOnly: boolean;
   learnerSecret: string;
   accountMode: boolean;
   resetLearnerSession: () => void;
+  overviewHrefOverride?: string;
 }) {
   const studyApiUrl = accountMode ? "/api/account/study" : "/api/public/study";
-  const overviewHref = accountMode
-    ? `/dashboard/sets/${encodeURIComponent(code)}/study`
-    : `/study/${encodeURIComponent(code)}`;
+  const overviewHref =
+    overviewHrefOverride ??
+    (accountMode
+      ? `/dashboard/sets/${encodeURIComponent(code)}/study`
+      : `/study/${encodeURIComponent(code)}`);
   const [setTitle, setSetTitle] = React.useState("");
   const [questionsById, setQuestionsById] = React.useState<
     Record<string, StudyQuestionItem>

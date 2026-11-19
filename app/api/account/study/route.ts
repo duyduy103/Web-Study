@@ -158,6 +158,24 @@ export async function POST(request: Request) {
       };
 
       if (payload.error) {
+        if (payload.error === "CLASS_ACCESS_REVOKED") {
+          return NextResponse.json(
+            { error: vi.classes.assignments.errors.classAccessRevoked },
+            { status: 403 }
+          );
+        }
+        if (payload.error === "ASSIGNMENT_CLOSED") {
+          return NextResponse.json(
+            { error: vi.classes.assignments.errors.assignmentClosed },
+            { status: 400 }
+          );
+        }
+        if (payload.error === "ASSIGNMENT_LOCKED_AFTER_DUE") {
+          return NextResponse.json(
+            { error: vi.classes.assignments.errors.assignmentLockedAfterDue },
+            { status: 400 }
+          );
+        }
         return NextResponse.json(
           { error: vi.study.overview.notFoundDescription },
           { status: 404 }

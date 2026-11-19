@@ -57,6 +57,25 @@ export default function PrivacyPage() {
             thu thập hay lưu trữ mật khẩu ngân hàng, mã PIN hay thông tin thẻ tín
             dụng của người dùng.
           </p>
+
+          <h2 className="text-base font-bold text-slate-900">
+            5. Quyền riêng tư trong Lớp học & Khi xóa tài khoản (Bản thảo mẫu — Cần rà soát pháp lý)
+          </h2>
+          <p>
+            Khi học sinh tham gia lớp học bằng mã lớp 6 ký tự, Giáo viên chủ lớp
+            được quyền xem tên hiển thị, email tài khoản và kết quả học tập (điểm
+            bài kiểm tra, câu trả lời chi tiết, số thẻ đã ôn và tỉ lệ nhớ FSRS)
+            của học sinh trong lớp đó để phục vụ việc giảng dạy và chấm điểm.
+            Học sinh cùng lớp không thể xem danh sách thành viên hay kết quả của
+            nhau; Quản trị viên hệ thống chỉ xem chỉ số tổng hợp số lượng lớp và
+            không truy cập nội dung hay bảng điểm của lớp. Học sinh dưới 16 tuổi
+            cần có sự đồng ý của phụ huynh/người giám hộ theo điều khoản đăng ký
+            khi dùng tài khoản tham gia lớp (hoặc dùng chế độ mã tham gia ẩn danh
+            không cần tài khoản). Khi học sinh thực hiện xóa tài khoản, toàn bộ
+            dữ liệu thành viên lớp (`class_members`), tiến độ thẻ nhớ và thông
+            tin định danh cá nhân gắn với tài khoản đều bị xóa vĩnh viễn khỏi hệ
+            thống.
+          </p>
         </section>
 
         <div className="pt-4">

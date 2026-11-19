@@ -10,6 +10,7 @@ import {
   resetPasswordSchema,
 } from "@/lib/auth/schemas";
 import { isPasswordContainingEmail } from "@/lib/auth/password-rules";
+import { sanitizeNextRedirectPath } from "@/lib/classes/constants";
 import { vi } from "@/lib/i18n/vi";
 
 export interface AuthActionState {
@@ -93,6 +94,10 @@ export async function loginAction(
 ): Promise<AuthActionState> {
   const emailRaw = (formData.get("email") as string | null) ?? "";
   const passwordRaw = (formData.get("password") as string | null) ?? "";
+  const safeNext = sanitizeNextRedirectPath(
+    formData.get("next") as string | null,
+    "/dashboard"
+  );
 
   const rawInput = {
     email: emailRaw,
@@ -134,7 +139,7 @@ export async function loginAction(
     };
   }
 
-  redirect("/dashboard");
+  redirect(safeNext);
 }
 
 export async function signupAction(
@@ -145,6 +150,10 @@ export async function signupAction(
   const displayNameRaw = (formData.get("displayName") as string | null) ?? "";
   const emailRaw = (formData.get("email") as string | null) ?? "";
   const passwordRaw = (formData.get("password") as string | null) ?? "";
+  const safeNext = sanitizeNextRedirectPath(
+    formData.get("next") as string | null,
+    "/dashboard"
+  );
   const confirmPasswordRaw =
     (formData.get("confirmPassword") as string | null) ?? "";
   const consentAcceptedRaw = formData.get("consentAccepted") === "on";
@@ -206,7 +215,7 @@ export async function signupAction(
     parsed.data.role === "teacher" ? "teacher" : "student";
 
   const origin = await getOriginUrl();
-  const emailRedirectTo = `${origin}/auth/callback?next=/dashboard`;
+  const emailRedirectTo = `${origin}/auth/callback?next=${encodeURIComponent(safeNext)}`;
 
   const { data, error } = await supabase.auth.signUp({
     email: parsed.data.email,
@@ -255,7 +264,7 @@ export async function signupAction(
   }
 
   if (data.session) {
-    redirect("/dashboard");
+    redirect(safeNext);
   }
 
   return {

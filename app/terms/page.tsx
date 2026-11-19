@@ -28,9 +28,10 @@ export default function TermsPage() {
           </h2>
           <p>
             Người tạo tài khoản cần từ đủ 16 tuổi trở lên, hoặc đã có sự đồng ý
-            của cha mẹ / người giám hộ hợp pháp. Trẻ em dưới 16 tuổi chưa có sự
-            đồng ý có thể tham gia ôn tập hoặc làm bài qua mã lớp ẩn danh mà
-            không cần đăng ký tài khoản.
+            của cha mẹ / người giám hộ hợp pháp theo cam kết khi đăng ký tài
+            khoản. Học sinh nhỏ tuổi chưa đủ độ tuổi quy định hoặc chưa có sự
+            đồng ý của phụ huynh vẫn có thể tham gia làm bài kiểm tra và ôn tập
+            bằng mã tham gia ẩn danh mà không cần đăng ký tài khoản.
           </p>
 
           <h2 className="text-base font-bold text-slate-900">
@@ -82,6 +83,23 @@ export default function TermsPage() {
             đầu tiên nếu phát sinh lỗi kỹ thuật từ phía hệ thống hoặc chuyển
             khoản thừa/trùng đơn hàng (cần kế toán/đơn vị vận hành rà soát quy
             trình chứng từ hoàn tiền trước khi vận hành thương mại chính thức).
+          </p>
+
+          <h2 className="text-base font-bold text-slate-900">
+            7. Lớp học, Giao bài & Xử lý dữ liệu khi xóa tài khoản (Bản thảo mẫu — Cần rà soát pháp lý)
+          </h2>
+          <p>
+            Chỉ tài khoản có vai trò Giáo viên mới có quyền tạo lớp học và giao
+            bài. Khi học sinh dùng tài khoản tham gia vào một lớp học bằng mã
+            lớp, hệ thống hiển thị thông báo rõ ràng rằng Giáo viên phụ trách
+            lớp sẽ thấy tên hiển thị (và email đăng ký) cùng kết quả làm bài kiểm
+            tra và tiến độ ôn tập FSRS của học sinh trong phạm vi lớp học đó. Học
+            sinh chỉ xem được kết quả của chính mình và không thấy danh sách hay
+            điểm số của bạn cùng lớp. Khi học sinh xóa tài khoản cá nhân, tư cách
+            thành viên lớp (`class_members`), hồ sơ học tập và các lượt làm bài
+            gắn với tài khoản đó sẽ bị xóa hoặc tách định danh theo quy trình xóa
+            tài khoản; khi giáo viên xóa lớp học hoặc hạ gói dịch vụ, dữ liệu bộ
+            câu hỏi và đề kiểm tra gốc vẫn được bảo toàn.
           </p>
         </section>
 

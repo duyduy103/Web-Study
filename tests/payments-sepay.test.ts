@@ -235,10 +235,12 @@ describe("Bước 13 - Giai đoạn 2: Thanh toán tự động SePay & VietQR",
     });
 
     // Chuyển thiếu (30000 thay vì 39000)
+    const testNow = new Date("2026-11-15T00:00:00.000Z");
     const underpaid = handleSepayWebhookInMemory({
       state,
       authHeader: `Apikey ${SECRET_KEY}`,
       expectedApiKey: SECRET_KEY,
+      now: testNow,
       rawBody: {
         id: 3001,
         transferType: "in",
@@ -258,6 +260,7 @@ describe("Bước 13 - Giai đoạn 2: Thanh toán tự động SePay & VietQR",
       state,
       authHeader: `Apikey ${SECRET_KEY}`,
       expectedApiKey: SECRET_KEY,
+      now: testNow,
       rawBody: {
         id: 3002,
         transferType: "in",

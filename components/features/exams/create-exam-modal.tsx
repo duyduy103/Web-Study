@@ -249,6 +249,7 @@ interface CreateExamModalProps {
   setTitle: string;
   questions: ReviewQuestionItem[];
   onClose: () => void;
+  onExamCreated?: (exam: { id: string; title: string }) => void;
 }
 
 export function CreateExamModal({
@@ -257,6 +258,7 @@ export function CreateExamModal({
   setTitle,
   questions,
   onClose,
+  onExamCreated,
 }: CreateExamModalProps) {
   const router = useRouter();
   const selector = useApprovedQuestionSelector(questions, open, 300);
@@ -343,8 +345,12 @@ export function CreateExamModal({
 
       const payload = data as { examId: string; code: string };
       onClose();
-      router.push(`/dashboard/exams/${payload.examId}`);
-      router.refresh();
+      if (onExamCreated) {
+        onExamCreated({ id: payload.examId, title: cleanTitle });
+      } else {
+        router.push(`/dashboard/exams/${payload.examId}`);
+        router.refresh();
+      }
     } catch (err) {
       setErrorMessage(
         err instanceof Error ? err.message : vi.importSet.errors.saveFailed

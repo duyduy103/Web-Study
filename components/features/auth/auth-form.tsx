@@ -25,11 +25,12 @@ import { PasswordStrengthMeter } from "@/components/features/auth/password-stren
 
 interface AuthFormProps {
   mode: "login" | "signup";
+  nextPath?: string;
 }
 
 const initialState: AuthActionState = {};
 
-export function AuthForm({ mode }: AuthFormProps) {
+export function AuthForm({ mode, nextPath = "/dashboard" }: AuthFormProps) {
   const isLogin = mode === "login";
   const serverAction = isLogin ? loginAction : signupAction;
 
@@ -419,6 +420,7 @@ export function AuthForm({ mode }: AuthFormProps) {
           noValidate
           className="space-y-4"
         >
+          <input type="hidden" name="next" value={nextPath} />
           {/* Lựa chọn vai trò (chỉ ở đăng ký) */}
           {!isLogin ? (
             <div className="space-y-2">
@@ -702,7 +704,13 @@ export function AuthForm({ mode }: AuthFormProps) {
           {isLogin ? vi.auth.noAccountPrompt : vi.auth.hasAccountPrompt}
         </span>
         <Link
-          href={isLogin ? "/signup" : "/login"}
+          href={
+            nextPath && nextPath !== "/dashboard"
+              ? `${isLogin ? "/signup" : "/login"}?next=${encodeURIComponent(nextPath)}`
+              : isLogin
+                ? "/signup"
+                : "/login"
+          }
           className="ml-1.5 inline-flex min-h-[44px] items-center font-semibold text-teal-700 underline-offset-4 hover:underline"
         >
           {isLogin ? vi.auth.noAccountLink : vi.auth.hasAccountLink}

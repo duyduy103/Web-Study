@@ -19,6 +19,8 @@ export const DEFAULT_FREE_LIMITS: PlanLimits = {
   storage_mb: 50,
   max_print_versions: 4,
   can_export_docx: false,
+  max_classes: 1,
+  max_students_per_class: 40,
   // Khóa đồng bộ tương thích
   ai_daily_limit: 10,
   max_export_versions: 4,
@@ -34,6 +36,8 @@ export const DEFAULT_PREMIUM_LIMITS: PlanLimits = {
   storage_mb: 500,
   max_print_versions: 8,
   can_export_docx: true,
+  max_classes: 10,
+  max_students_per_class: 200,
   // Khóa đồng bộ tương thích
   ai_daily_limit: 50,
   max_export_versions: 8,
@@ -167,6 +171,20 @@ export function normalizePlanLimits(
       ? r.can_export_docx
       : fallbackDefaults.can_export_docx;
 
+  const maxClasses =
+    typeof r.max_classes === "number" &&
+    Number.isFinite(r.max_classes) &&
+    r.max_classes > 0
+      ? Math.floor(r.max_classes)
+      : fallbackDefaults.max_classes;
+
+  const maxStudentsPerClass =
+    typeof r.max_students_per_class === "number" &&
+    Number.isFinite(r.max_students_per_class) &&
+    r.max_students_per_class > 0
+      ? Math.floor(r.max_students_per_class)
+      : fallbackDefaults.max_students_per_class;
+
   const maxQuestionsPerSet =
     r.max_questions_per_set === null ||
     (typeof r.max_questions_per_set === "number" &&
@@ -189,6 +207,8 @@ export function normalizePlanLimits(
     storage_mb: storageMb,
     max_print_versions: maxPrintVersions,
     can_export_docx: canExportDocx,
+    max_classes: maxClasses,
+    max_students_per_class: maxStudentsPerClass,
     ai_daily_limit: effectiveAiDaily,
     max_export_versions: maxPrintVersions,
     max_questions_per_set: maxQuestionsPerSet,

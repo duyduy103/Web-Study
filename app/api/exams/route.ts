@@ -19,6 +19,7 @@ const createExamSchema = z.object({
   shuffleQuestions: z.boolean().default(true),
   shuffleChoices: z.boolean().default(true),
   showAnswers: z.boolean().default(true),
+  accessMode: z.enum(["public_code", "class_only"]).default("public_code"),
 });
 
 export async function POST(request: Request) {
@@ -157,6 +158,7 @@ export async function POST(request: Request) {
         closes_at: input.closesAt ?? null,
         max_attempts: input.maxAttempts,
         total_points: input.totalPoints,
+        access_mode: input.accessMode,
       })
       .select("id, code")
       .single();

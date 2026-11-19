@@ -36,10 +36,16 @@ export function StudySetOverviewClient({
   code,
   accountMode = false,
   displayName,
+  backHrefOverride,
+  backLabelOverride,
+  reviewBaseHrefOverride,
 }: {
   code: string;
   accountMode?: boolean;
   displayName?: string;
+  backHrefOverride?: string;
+  backLabelOverride?: string;
+  reviewBaseHrefOverride?: string;
 }) {
   if (accountMode) {
     return (
@@ -49,6 +55,9 @@ export function StudySetOverviewClient({
         nickname={displayName ?? "Người học"}
         accountMode={true}
         resetLearnerSession={() => {}}
+        backHrefOverride={backHrefOverride}
+        backLabelOverride={backLabelOverride}
+        reviewBaseHrefOverride={reviewBaseHrefOverride}
       />
     );
   }
@@ -62,6 +71,9 @@ export function StudySetOverviewClient({
           nickname={nickname}
           accountMode={false}
           resetLearnerSession={resetLearnerSession}
+          backHrefOverride={backHrefOverride}
+          backLabelOverride={backLabelOverride}
+          reviewBaseHrefOverride={reviewBaseHrefOverride}
         />
       )}
     </LearnerOnboardingGate>
@@ -74,19 +86,31 @@ function StudySetOverviewInner({
   nickname,
   accountMode,
   resetLearnerSession,
+  backHrefOverride,
+  backLabelOverride,
+  reviewBaseHrefOverride,
 }: {
   code: string;
   learnerSecret: string;
   nickname: string;
   accountMode: boolean;
   resetLearnerSession: () => void;
+  backHrefOverride?: string;
+  backLabelOverride?: string;
+  reviewBaseHrefOverride?: string;
 }) {
   const studyApiUrl = accountMode ? "/api/account/study" : "/api/public/study";
-  const backHref = accountMode ? `/dashboard/sets/${encodeURIComponent(code)}` : "/study";
-  const backLabel = accountMode ? vi.studentSet.backToSet : vi.study.overview.backToHub;
-  const reviewBaseHref = accountMode
-    ? `/dashboard/sets/${encodeURIComponent(code)}/study/review`
-    : `/study/${encodeURIComponent(code)}/review`;
+  const backHref =
+    backHrefOverride ??
+    (accountMode ? `/dashboard/sets/${encodeURIComponent(code)}` : "/study");
+  const backLabel =
+    backLabelOverride ??
+    (accountMode ? vi.studentSet.backToSet : vi.study.overview.backToHub);
+  const reviewBaseHref =
+    reviewBaseHrefOverride ??
+    (accountMode
+      ? `/dashboard/sets/${encodeURIComponent(code)}/study/review`
+      : `/study/${encodeURIComponent(code)}/review`);
   const [setInfo, setSetInfo] = React.useState<StudySetInfo | null>(null);
   const [questions, setQuestions] = React.useState<QuestionSummaryItem[]>([]);
   const [cardStates, setCardStates] = React.useState<SrsCardStateRecord[]>([]);

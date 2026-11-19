@@ -60,6 +60,10 @@ export interface PaymentEventItem {
   created_at: string;
 }
 
+export type ClassMemberStatus = "pending" | "active" | "rejected" | "removed" | "left";
+export type ExamAccessMode = "public_code" | "class_only";
+export type ClassAssignmentKind = "exam" | "study";
+
 export interface PlanLimits {
   max_sets: number;
   ai_daily: number;
@@ -68,6 +72,8 @@ export interface PlanLimits {
   storage_mb: number;
   max_print_versions: number;
   can_export_docx: boolean;
+  max_classes: number;
+  max_students_per_class: number;
   // Các khóa tương thích ngược từ Bước 12B
   ai_daily_limit: number;
   max_export_versions: number;
@@ -404,6 +410,7 @@ export type Database = {
           max_attempts: number;
           total_points: number;
           exam_mode: ExamMode;
+          access_mode?: ExamAccessMode;
           version_count: number;
           seed: string;
           header_info: Json;
@@ -425,6 +432,7 @@ export type Database = {
           max_attempts?: number;
           total_points?: number;
           exam_mode?: ExamMode;
+          access_mode?: ExamAccessMode;
           version_count?: number;
           seed?: string;
           header_info?: Json;
@@ -446,6 +454,7 @@ export type Database = {
           max_attempts?: number;
           total_points?: number;
           exam_mode?: ExamMode;
+          access_mode?: ExamAccessMode;
           version_count?: number;
           seed?: string;
           header_info?: Json;
@@ -553,6 +562,7 @@ export type Database = {
           id: string;
           exam_id: string | null;
           set_id: string | null;
+          assignment_id?: string | null;
           student_id: string | null;
           learner_id: string | null;
           student_name: string;
@@ -573,6 +583,7 @@ export type Database = {
           id?: string;
           exam_id?: string | null;
           set_id?: string | null;
+          assignment_id?: string | null;
           student_id?: string | null;
           learner_id?: string | null;
           student_name?: string;
@@ -593,6 +604,7 @@ export type Database = {
           id?: string;
           exam_id?: string | null;
           set_id?: string | null;
+          assignment_id?: string | null;
           student_id?: string | null;
           learner_id?: string | null;
           student_name?: string;
@@ -1210,6 +1222,111 @@ export type Database = {
         };
         Relationships: [];
       };
+      classes: {
+        Row: {
+          id: string;
+          teacher_id: string;
+          name: string;
+          description: string | null;
+          join_code: string;
+          require_approval: boolean;
+          is_open: boolean;
+          archived_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          teacher_id: string;
+          name: string;
+          description?: string | null;
+          join_code: string;
+          require_approval?: boolean;
+          is_open?: boolean;
+          archived_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          teacher_id?: string;
+          name?: string;
+          description?: string | null;
+          join_code?: string;
+          require_approval?: boolean;
+          is_open?: boolean;
+          archived_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      class_members: {
+        Row: {
+          id: string;
+          class_id: string;
+          user_id: string;
+          status: ClassMemberStatus;
+          joined_at: string;
+          decided_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          class_id: string;
+          user_id: string;
+          status?: ClassMemberStatus;
+          joined_at?: string;
+          decided_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          class_id?: string;
+          user_id?: string;
+          status?: ClassMemberStatus;
+          joined_at?: string;
+          decided_at?: string | null;
+        };
+        Relationships: [];
+      };
+      class_assignments: {
+        Row: {
+          id: string;
+          class_id: string;
+          kind: ClassAssignmentKind;
+          exam_id: string | null;
+          set_id: string | null;
+          title: string;
+          instructions: string | null;
+          due_at: string | null;
+          lock_after_due: boolean;
+          created_at: string;
+          closed_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          class_id: string;
+          kind: ClassAssignmentKind;
+          exam_id?: string | null;
+          set_id?: string | null;
+          title: string;
+          instructions?: string | null;
+          due_at?: string | null;
+          lock_after_due?: boolean;
+          created_at?: string;
+          closed_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          class_id?: string;
+          kind?: ClassAssignmentKind;
+          exam_id?: string | null;
+          set_id?: string | null;
+          title?: string;
+          instructions?: string | null;
+          due_at?: string | null;
+          lock_after_due?: boolean;
+          created_at?: string;
+          closed_at?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -1557,6 +1674,135 @@ export type Database = {
       debug_check_user_entitlements: {
         Args: {
           p_email_or_id?: string | null;
+        };
+        Returns: Json;
+      };
+      create_class: {
+        Args: {
+          p_name: string;
+          p_description?: string | null;
+          p_require_approval?: boolean;
+        };
+        Returns: Json;
+      };
+      regenerate_class_join_code: {
+        Args: {
+          p_class_id: string;
+        };
+        Returns: Json;
+      };
+      update_class_settings: {
+        Args: {
+          p_class_id: string;
+          p_name?: string | null;
+          p_description?: string | null;
+          p_update_description?: boolean;
+          p_require_approval?: boolean | null;
+          p_is_open?: boolean | null;
+          p_archived?: boolean | null;
+        };
+        Returns: Json;
+      };
+      get_teacher_classes: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      get_class_members_for_teacher: {
+        Args: {
+          p_class_id: string;
+        };
+        Returns: Json;
+      };
+      decide_class_member: {
+        Args: {
+          p_class_id: string;
+          p_member_user_id: string;
+          p_action: string;
+        };
+        Returns: Json;
+      };
+      lookup_class_by_join_code: {
+        Args: {
+          p_join_code: string;
+          p_client_ip?: string | null;
+        };
+        Returns: Json;
+      };
+      join_class_by_code: {
+        Args: {
+          p_join_code: string;
+          p_client_ip?: string | null;
+          p_max_student_classes?: number;
+        };
+        Returns: Json;
+      };
+      leave_class: {
+        Args: {
+          p_class_id: string;
+        };
+        Returns: Json;
+      };
+      get_student_classes: {
+        Args: Record<string, never>;
+        Returns: Json;
+      };
+      create_class_assignment: {
+        Args: {
+          p_class_id: string;
+          p_kind: string;
+          p_exam_id?: string | null;
+          p_set_id?: string | null;
+          p_title: string;
+          p_instructions?: string | null;
+          p_due_at?: string | null;
+          p_lock_after_due?: boolean;
+          p_set_exam_class_only?: boolean;
+        };
+        Returns: Json;
+      };
+      update_class_assignment: {
+        Args: {
+          p_assignment_id: string;
+          p_title?: string | null;
+          p_instructions?: string | null;
+          p_update_instructions?: boolean;
+          p_due_at?: string | null;
+          p_update_due_at?: boolean;
+          p_lock_after_due?: boolean | null;
+          p_closed?: boolean | null;
+        };
+        Returns: Json;
+      };
+      get_teacher_class_assignments: {
+        Args: {
+          p_class_id: string;
+        };
+        Returns: Json;
+      };
+      get_student_class_assignments: {
+        Args: {
+          p_class_id?: string | null;
+        };
+        Returns: Json;
+      };
+      get_class_exam_structure_for_member: {
+        Args: {
+          p_assignment_id: string;
+        };
+        Returns: Json;
+      };
+      start_class_exam_attempt: {
+        Args: {
+          p_assignment_id: string;
+          p_attempt_token: string;
+          p_question_order: string[];
+          p_choice_orders: Json;
+        };
+        Returns: Json;
+      };
+      get_teacher_class_results: {
+        Args: {
+          p_class_id: string;
         };
         Returns: Json;
       };

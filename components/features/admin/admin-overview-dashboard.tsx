@@ -22,6 +22,9 @@ export interface SystemOverviewData {
     attempts: number;
     review_logs: number;
     anonymous_learners: number;
+    classes?: number;
+    class_members?: number;
+    class_assignments?: number;
   };
   ai: {
     today_calls: number;
@@ -210,6 +213,45 @@ export function AdminOverviewDashboard({
             <p className="mt-1 text-2xl font-black text-white">{storageMb} MB</p>
             <span className="mt-2 block text-[10px] text-slate-500">
               File đề cương & tài liệu
+            </span>
+          </div>
+        </div>
+
+        {/* Chỉ số tổng hợp Lớp học & Giao bài (Admin không đọc nội dung hay kết quả lớp) */}
+        <div className="grid grid-cols-1 gap-3 pt-1 sm:grid-cols-3">
+          <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 shadow-sm">
+            <span className="text-[11px] font-medium text-slate-400">
+              {vi.admin.metrics.classClassesCount}
+            </span>
+            <p className="mt-1 text-2xl font-black text-teal-400">
+              {data.content.classes ?? 0}
+            </p>
+            <span className="mt-2 block text-[10px] text-slate-500">
+              Chỉ đếm số lớp toàn hệ thống
+            </span>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 shadow-sm">
+            <span className="text-[11px] font-medium text-slate-400">
+              {vi.admin.metrics.classMembersCount}
+            </span>
+            <p className="mt-1 text-2xl font-black text-sky-400">
+              {data.content.class_members ?? 0}
+            </p>
+            <span className="mt-2 block text-[10px] text-slate-500">
+              Lượt thành viên đang hoạt động
+            </span>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4 shadow-sm">
+            <span className="text-[11px] font-medium text-slate-400">
+              {vi.admin.metrics.classAssignmentsCount}
+            </span>
+            <p className="mt-1 text-2xl font-black text-indigo-400">
+              {data.content.class_assignments ?? 0}
+            </p>
+            <span className="mt-2 block text-[10px] text-slate-500">
+              Không truy cập nội dung/điểm lớp
             </span>
           </div>
         </div>
